@@ -28,7 +28,7 @@ const consoleFormat = winston.format.combine(
 
 // Configuration du transport pour les logs généraux avec rotation
 const fileRotateTransport = new DailyRotateFile({
-  filename: path.join('/var/log/myamana', 'application-%DATE%.log'),
+  filename: path.join('/var/log/acdlp', 'application-%DATE%.log'),
   datePattern: 'YYYY-MM-DD',
   maxSize: '20m',
   maxFiles: '30d',
@@ -38,7 +38,7 @@ const fileRotateTransport = new DailyRotateFile({
 
 // Configuration du transport pour les erreurs avec rotation
 const errorRotateTransport = new DailyRotateFile({
-  filename: path.join('/var/log/myamana', 'error-%DATE%.log'),
+  filename: path.join('/var/log/acdlp', 'error-%DATE%.log'),
   datePattern: 'YYYY-MM-DD',
   maxSize: '20m',
   maxFiles: '30d',
@@ -50,7 +50,7 @@ const errorRotateTransport = new DailyRotateFile({
 const logger = winston.createLogger({
   level: level,
   format: customFormat,
-  defaultMeta: { service: 'myamana-api' },
+  defaultMeta: { service: 'acdlp-api' },
   transports: [
     // Logs généraux
     fileRotateTransport,
@@ -60,7 +60,7 @@ const logger = winston.createLogger({
   // Gestion des rejections et exceptions non capturées
   exceptionHandlers: [
     new DailyRotateFile({
-      filename: path.join('/var/log/myamana', 'exceptions-%DATE%.log'),
+      filename: path.join('/var/log/acdlp', 'exceptions-%DATE%.log'),
       datePattern: 'YYYY-MM-DD',
       maxSize: '20m',
       maxFiles: '30d',
@@ -69,7 +69,7 @@ const logger = winston.createLogger({
   ],
   rejectionHandlers: [
     new DailyRotateFile({
-      filename: path.join('/var/log/myamana', 'rejections-%DATE%.log'),
+      filename: path.join('/var/log/acdlp', 'rejections-%DATE%.log'),
       datePattern: 'YYYY-MM-DD',
       maxSize: '20m',
       maxFiles: '30d',
