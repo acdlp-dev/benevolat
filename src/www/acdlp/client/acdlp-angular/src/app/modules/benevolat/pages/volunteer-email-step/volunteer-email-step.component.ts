@@ -48,7 +48,7 @@ export class VolunteerEmailStepComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.assoId = this.route.snapshot.params['id'] || 'default-association-id';
+    this.assoId = 'au-coeur-de-la-precarite';
 
     this.associationService.getAssociationConfig(this.assoId).subscribe({
       next: (data) => {
@@ -117,7 +117,7 @@ export class VolunteerEmailStepComponent implements OnInit {
         next: (response) => {
           console.log('✅ OTP demandé avec succès:', response);
           // Rediriger vers la page de vérification OTP
-          this.router.navigate(['/benevolat/otp-verification'], {
+          this.router.navigate(['/otp-verification'], {
             state: { email, associationId: this.assoId }
           });
         },

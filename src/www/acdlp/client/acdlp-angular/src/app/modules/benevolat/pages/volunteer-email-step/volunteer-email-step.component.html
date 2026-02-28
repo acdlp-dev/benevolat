@@ -1,4 +1,4 @@
-<app-auth-layout [logoSrc]="association?.logo_url || 'assets/images/au-coeur-de-la-precarite.png'" [logoAlt]="association?.name_asso || 'Logo'">
+<app-auth-layout>
   @if (loading) {
     <div class="text-center py-8">
       <p>Chargement...</p>
@@ -100,7 +100,7 @@
 
       <p class="text-sm text-gray-500 text-center mt-4">
         Vous avez déjà un compte ? 
-        <a [routerLink]="['/benevolat/signin', assoId]" class="text-primary font-semibold hover:underline">
+        <a routerLink="/signin" class="text-primary font-semibold hover:underline">
           Se connecter
         </a>
       </p>

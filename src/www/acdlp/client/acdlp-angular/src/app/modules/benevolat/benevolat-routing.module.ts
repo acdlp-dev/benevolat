@@ -18,12 +18,8 @@ const routes: Routes = [
     component: BenevolatComponent,
   },
   {
-    path: 'form/:id',
+    path: 'signup',
     component: VolunteerEmailStepComponent,
-  },
-  {
-    path: 'signup/:id',
-    component: VolunteerEmailStepComponent, // Redirection pour compatibilité
   },
   {
     path: 'otp-verification',
@@ -39,10 +35,6 @@ const routes: Routes = [
   },
   {
     path: 'signin',
-    component: VolunteerSigninComponent,
-  },
-  {
-    path: 'signin/:asso',
     component: VolunteerSigninComponent,
   },
   {

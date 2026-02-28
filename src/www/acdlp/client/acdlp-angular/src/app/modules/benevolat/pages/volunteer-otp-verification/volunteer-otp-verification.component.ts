@@ -49,7 +49,7 @@ export class VolunteerOtpVerificationComponent implements OnInit {
   ngOnInit(): void {
     // Si pas d'email, rediriger vers la page d'inscription
     if (!this.email) {
-      this.router.navigate(['/benevolat/form']);
+      this.router.navigate(['/signup']);
       return;
     }
 
@@ -120,7 +120,7 @@ export class VolunteerOtpVerificationComponent implements OnInit {
           }
           
           // Rediriger vers le formulaire complet avec le token
-          this.router.navigate(['/benevolat/complete-signup'], {
+          this.router.navigate(['/complete-signup'], {
             state: { 
               token: response.token, 
               email: response.email,

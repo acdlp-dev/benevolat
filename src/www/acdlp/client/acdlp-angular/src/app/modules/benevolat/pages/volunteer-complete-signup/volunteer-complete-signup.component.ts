@@ -114,12 +114,12 @@ export class VolunteerCompleteSignupComponent implements OnInit {
     // Vérifier qu'on a bien un token et un email
     if (!this.token || !this.email) {
       console.error('Token ou email manquant, redirection vers formulaire');
-      this.router.navigate(['/benevolat/form', this.assoId || 'default']);
+      this.router.navigate(['/signup']);
       return;
     }
 
     if (!this.assoId) {
-      this.assoId = 'default-association-id';
+      this.assoId = 'au-coeur-de-la-precarite';
     }
 
     this.associationService.getAssociationConfig(this.assoId).subscribe({
@@ -157,7 +157,7 @@ export class VolunteerCompleteSignupComponent implements OnInit {
           
           // Rediriger vers la page de connexion après 3 secondes
           setTimeout(() => {
-            this.router.navigate(['/benevolat/signin']);
+            this.router.navigate(['/signin']);
           }, 3000);
         },
         error: (error) => {

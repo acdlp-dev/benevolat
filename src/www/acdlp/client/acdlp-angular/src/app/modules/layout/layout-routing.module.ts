@@ -8,7 +8,7 @@ const routes: Routes = [
     component: LayoutComponent,
     loadChildren: () => import('../uikit/uikit.module').then((m) => m.UikitModule),
   },
-  { path: '', redirectTo: '/benevolat/signin', pathMatch: 'full' },
+  { path: '', redirectTo: '/signin', pathMatch: 'full' },
   { path: '**', redirectTo: 'error/404' },
 ];
 

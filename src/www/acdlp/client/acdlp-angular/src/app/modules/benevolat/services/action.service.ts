@@ -31,7 +31,7 @@ export class ActionService {
       params = params.set('filter', filter);
     }
     
-    return this.http.get<any>(`${this.apiUrl}/benevolat/actions/${associationName}`, { 
+    return this.http.get<any>(`${this.apiUrl}/actions/${associationName}`, { 
       params,
       withCredentials: true 
     })
@@ -140,7 +140,7 @@ export class ActionService {
       date_action: dateAction
     };
     
-    return this.http.post<InscriptionResponse>(`${this.apiUrl}/benevolat/inscription`, request, {
+    return this.http.post<InscriptionResponse>(`${this.apiUrl}/inscription`, request, {
       withCredentials: true
     })
       .pipe(
@@ -155,7 +155,7 @@ export class ActionService {
    * Désinscription d'une action
    */
   desinscrireAction(inscriptionId: number): Observable<any> {
-    return this.http.delete<any>(`${this.apiUrl}/benevolat/desinscription/${inscriptionId}`, {
+    return this.http.delete<any>(`${this.apiUrl}/desinscription/${inscriptionId}`, {
       withCredentials: true
     })
       .pipe(
@@ -177,7 +177,7 @@ export class ActionService {
       params = params.set('date_action', dateAction);
     }
     
-    return this.http.get<any>(`${this.apiUrl}/benevolat/actions/${actionId}/participants`, {
+    return this.http.get<any>(`${this.apiUrl}/actions/${actionId}/participants`, {
       params,
       withCredentials: true
     })
@@ -193,7 +193,7 @@ export class ActionService {
    * Met à jour le statut d'un participant (réservé au responsable)
    */
   updateParticipantStatus(inscriptionId: number, statut: string): Observable<any> {
-    return this.http.patch<any>(`${this.apiUrl}/benevolat/actions/participants/${inscriptionId}/statut`, 
+    return this.http.patch<any>(`${this.apiUrl}/actions/participants/${inscriptionId}/statut`, 
       { statut },
       { withCredentials: true }
     )
@@ -209,7 +209,7 @@ export class ActionService {
    * Récupère les statistiques du bénévole connecté
    */
   getBenevoleStats(): Observable<any> {
-    return this.http.get<any>(`${this.apiUrl}/benevolat/stats`, {
+    return this.http.get<any>(`${this.apiUrl}/stats`, {
       withCredentials: true
     })
       .pipe(

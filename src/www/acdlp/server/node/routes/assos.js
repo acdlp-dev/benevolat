@@ -10,7 +10,7 @@ router.get('/assos/:uri', async (req, res) => {
 
   try {
     const results = await db.select(
-      'SELECT id, nom, email, siren, uri, logoUrl AS logo_url, codeCouleur AS code_couleur, signataire_nom, signataire_prenom, benevoles_resp_email, adresse, code_postal, ville, tel FROM Assos WHERE uri = ?',
+      'SELECT id, nom, email, siren, uri, logoUrl AS logo_url, codeCouleur AS code_couleur, signataire_nom, signataire_prenom, adresse, code_postal, ville, tel FROM Assos WHERE uri = ?',
       [uri], 'remote'
     );
     if (results.length === 0) {
@@ -31,7 +31,7 @@ router.get('/assos/config/:asso', async (req, res) => {
 
   try {
     const results = await db.select(
-      'SELECT nom AS name_asso, surnom AS surname_asso, objet, site, ty_page AS ty_link, site_ponctuel_error AS error_link, logoUrl AS logo_url, codeCouleur AS code_couleur, adresse, adresseCheque, code_postal, code_postalCheque, ville, villeCheque, email AS emailAsso, tel, benevoles_resp_email FROM Assos WHERE uri = ? order by ajout desc',
+      'SELECT nom AS name_asso, surnom AS surname_asso, objet, site, ty_page AS ty_link, site_ponctuel_error AS error_link, logoUrl AS logo_url, codeCouleur AS code_couleur, adresse, adresseCheque, code_postal, code_postalCheque, ville, villeCheque, email AS emailAsso, tel FROM Assos WHERE uri = ? order by ajout desc',
       [asso], 'remote'
     );
     if (results.length === 0) {

@@ -98,26 +98,24 @@
     <!-- Lien mot de passe oublié -->
     <div class="text-center pt-2">
       <a 
-        routerLink="/benevolat/forgot-password" 
+        routerLink="/forgot-password" 
         class="text-sm text-primary hover:text-primary-dark font-medium"
       >
         Mot de passe oublié ?
       </a>
     </div>
 
-    <!-- Lien création de compte (affiché uniquement si paramètre asso présent) -->
-    @if (assoParam) {
-      <div class="text-center pt-4 mt-4 border-t border-gray-200">
-        <p class="text-sm text-gray-600 mb-2">
-          Vous n'avez pas encore de compte ?
-        </p>
-        <a 
-          [routerLink]="['/benevolat/signup', assoParam]"
-          class="text-sm text-primary hover:text-primary-dark font-medium"
-        >
-          Cliquer ici pour en créer un
-        </a>
-      </div>
-    }
+    <!-- Lien création de compte -->
+    <div class="text-center pt-4 mt-4 border-t border-gray-200">
+      <p class="text-sm text-gray-600 mb-2">
+        Vous n'avez pas encore de compte ?
+      </p>
+      <a
+        routerLink="/signup"
+        class="text-sm text-primary hover:text-primary-dark font-medium"
+      >
+        Cliquer ici pour en créer un
+      </a>
+    </div>
   </form>
 </app-auth-layout>

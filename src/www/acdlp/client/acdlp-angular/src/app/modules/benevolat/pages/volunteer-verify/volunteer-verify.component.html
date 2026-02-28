@@ -1,15 +1,9 @@
-<div class="flex h-screen w-screen">
-  <!-- Section gauche avec image de fond -->
-  <div class="auth-bg hidden flex-1 items-center justify-center bg-primary bg-cover lg:flex">
-    <div class="max-w-2xl space-y-4 p-8 text-center text-white">
-      <img src="./assets/images/auth-screens.png" alt="dashboard widget" />
-    </div>
-  </div>
+<div class="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+  <div class="max-w-2xl w-full">
+      <div class="flex justify-center mb-6">
+        <img src="assets/images/logo.png" alt="Au Coeur De La Précarité" class="h-20" />
+      </div>
 
-  <!-- Section droite avec contenu -->
-  <div class="flex flex-1 items-center justify-center bg-background">
-    <div class="container mx-auto px-4 py-8 max-w-2xl">
-      
       <!-- État de chargement -->
       <div *ngIf="loading" class="text-center">
         <div class="mb-6 rounded-lg bg-blue-50 border border-blue-200 p-6">
@@ -50,7 +44,7 @@
         </div>
 
         <div class="text-center">
-          <a href="/app/benevolat/signin" class="inline-flex items-center px-4 py-3 border border-transparent text-base font-medium rounded-md text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
+          <a href="/app/signin" class="inline-flex items-center px-4 py-3 border border-transparent text-base font-medium rounded-md text-white bg-primary hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary">
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path>
             </svg>
@@ -93,6 +87,5 @@
         </div>
       </div>
 
-    </div>
   </div>
 </div>

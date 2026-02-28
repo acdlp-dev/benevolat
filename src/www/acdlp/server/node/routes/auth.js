@@ -75,7 +75,7 @@ router.post('/logout', (req, res) => {
 });
 
 // Étape 1 : Demande de code OTP pour inscription bénévolat
-router.post('/benevolat/request-otp', async(req, res) => {
+router.post('/request-otp', async(req, res) => {
     const { email, confirmEmail, associationName } = req.body;
     console.log("Demande OTP bénévolat reçue pour " + email);
 
@@ -137,7 +137,7 @@ router.post('/benevolat/request-otp', async(req, res) => {
                         }
                     }
 
-                    const resetUrl = `${urlOrigin}/app/benevolat/new-password/token/${resetToken}`;
+                    const resetUrl = `${urlOrigin}/app/new-password/token/${resetToken}`;
 
                     // Template ID pour "compte existant détecté"
                     const templateId = 7472537; // Template personnalisé pour tentative d'inscription sur compte existant
@@ -249,7 +249,7 @@ router.post('/benevolat/request-otp', async(req, res) => {
 });
 
 // Étape 2 : Vérification du code OTP
-router.post('/benevolat/verify-otp', async(req, res) => {
+router.post('/verify-otp', async(req, res) => {
     const { email, code } = req.body;
     console.log(`🔍 [BENEVOLAT OTP] Vérification du code pour: ${email}`);
 
@@ -307,7 +307,7 @@ router.post('/benevolat/verify-otp', async(req, res) => {
 });
 
 // Étape 3 : Complétion de l'inscription avec toutes les informations
-router.post('/benevolat/complete-signup', async(req, res) => {
+router.post('/complete-signup', async(req, res) => {
     const {
         token,
         password,
@@ -460,7 +460,7 @@ router.post('/benevolat/complete-signup', async(req, res) => {
 });
 
 // Signin Bénévolat
-router.post('/benevolat/signin', async(req, res) => {
+router.post('/signin', async(req, res) => {
     const { email, password } = req.body;
     console.log("Demande de signin bénévolat reçue de " + email);
 
@@ -516,7 +516,7 @@ router.post('/benevolat/signin', async(req, res) => {
 
 
 // Réinitialisation de mot de passe pour les bénévoles
-router.post('/benevolat/request-password-reset', async (req, res) => {
+router.post('/request-password-reset', async (req, res) => {
     const { email } = req.body;
     console.log(`🔑 [BENEVOLAT PASSWORD RESET] Demande de réinitialisation pour: ${email}`);
 
@@ -532,7 +532,7 @@ router.post('/benevolat/request-password-reset', async (req, res) => {
             // Si l'email n'existe pas, envoyer un email personnalisé pour inviter à créer un compte
             // au lieu de retourner une erreur 404
 
-            const signupUrl = `${urlOrigin}/app/benevolat/sign-up`;
+            const signupUrl = `${urlOrigin}/app/signup`;
 
             await sendTemplateEmail(email, 7614867, {
                 lien_creation_compte: signupUrl
@@ -568,7 +568,7 @@ router.post('/benevolat/request-password-reset', async (req, res) => {
             }
         }
 
-        const resetUrl = `${urlOrigin}/app/benevolat/new-password/token/${resetToken}`;
+        const resetUrl = `${urlOrigin}/app/new-password/token/${resetToken}`;
 
         // LOG POUR LE DÉVELOPPEMENT
         console.log(`🔗 [BENEVOLAT PASSWORD RESET] Lien de réinitialisation pour ${email}:`);
@@ -602,7 +602,7 @@ router.post('/benevolat/request-password-reset', async (req, res) => {
  * Réinitialisation de mot de passe pour les bénévoles connectés
  * Cette route nécessite une authentification et utilise l'email de l'utilisateur connecté
  */
-router.post('/benevolat/request-password-reset-current-user', authMiddleware, async (req, res) => {
+router.post('/request-password-reset-current-user', authMiddleware, async (req, res) => {
     console.log(`🔑 [BENEVOLAT PASSWORD RESET] Demande de réinitialisation pour l'utilisateur connecté`);
 
     try {
@@ -640,7 +640,7 @@ router.post('/benevolat/request-password-reset-current-user', authMiddleware, as
             }
         }
 
-        const resetUrl = `${urlOrigin}/app/benevolat/new-password/token/${resetToken}`;
+        const resetUrl = `${urlOrigin}/app/new-password/token/${resetToken}`;
 
         // LOG POUR LE DÉVELOPPEMENT
         console.log(`🔗 [BENEVOLAT PASSWORD RESET] Lien de réinitialisation pour ${userEmail}:`);
@@ -673,7 +673,7 @@ router.post('/benevolat/request-password-reset-current-user', authMiddleware, as
 /**
  * Réinitialisation du mot de passe pour les bénévoles (avec le reset_token)
  */
-router.post('/benevolat/reset-password', async (req, res) => {
+router.post('/reset-password', async (req, res) => {
     const { token, newPassword, confirmPassword } = req.body;
     console.log(`🔑 [BENEVOLAT PASSWORD RESET] Tentative de réinitialisation avec token`);
 
@@ -716,7 +716,7 @@ router.post('/benevolat/reset-password', async (req, res) => {
     }
 });
 // Vérification d'email pour les bénévoles
-router.get('/benevolat/verify-email/:token', async(req, res) => {
+router.get('/verify-email/:token', async(req, res) => {
     const { token } = req.params;
     console.log(`🔍 [BENEVOLAT VERIFICATION] Tentative de vérification avec token: ${token}`);
 

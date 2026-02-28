@@ -10,11 +10,11 @@ const { authMiddleware } = require('./auth');
 
 
 /**
- * GET /api/benevolat/actions/:associationName
+ * GET /api/actions/:associationName
  * Récupère les actions d'une association pour le calendrier bénévole
  * Supporte le filtrage par profil bénévole et inscriptions
  */
-router.get('/benevolat/actions/:associationName', authMiddleware, async (req, res) => {
+router.get('/actions/:associationName', authMiddleware, async (req, res) => {
     try {
         const { associationName } = req.params;
         const { filter = 'all' } = req.query; // 'all' ou 'inscribed'
@@ -236,11 +236,11 @@ router.get('/benevolat/actions/:associationName', authMiddleware, async (req, re
 });
 
 /**
- * POST /api/benevolat/inscription
+ * POST /api/inscription
  * Inscription d'un bénévole à une action spécifique
  * Si benevole_id est fourni dans le body, l'admin peut inscrire un autre bénévole
  */
-router.post('/benevolat/inscription', authMiddleware, async (req, res) => {
+router.post('/inscription', authMiddleware, async (req, res) => {
     try {
         const { action_id, date_action, benevole_id: benevoleIdFromBody } = req.body;
 
@@ -480,11 +480,11 @@ router.post('/benevolat/inscription', authMiddleware, async (req, res) => {
 });
 
 /**
- * GET /api/benevolat/actions/:actionId/participants
+ * GET /api/actions/:actionId/participants
  * Récupère la liste des participants d'une action (réservé aux bénévoles de type "responsable")
  * Query params: date_action (optionnel) pour filtrer par date (utile pour actions récurrentes)
  */
-router.get('/benevolat/actions/:actionId/participants', authMiddleware, async (req, res) => {
+router.get('/actions/:actionId/participants', authMiddleware, async (req, res) => {
   try {
     const { actionId } = req.params;
     const { date_action } = req.query; // Date spécifique pour les actions récurrentes
@@ -564,10 +564,10 @@ router.get('/benevolat/actions/:actionId/participants', authMiddleware, async (r
 });
 
 /**
- * PATCH /api/benevolat/actions/participants/:inscriptionId/statut
+ * PATCH /api/actions/participants/:inscriptionId/statut
  * Met à jour le statut d'un participant (réservé au responsable)
  */
-router.patch('/benevolat/actions/participants/:inscriptionId/statut', authMiddleware, async (req, res) => {
+router.patch('/actions/participants/:inscriptionId/statut', authMiddleware, async (req, res) => {
   try {
     const { inscriptionId } = req.params;
     const { statut } = req.body;
@@ -695,10 +695,10 @@ router.patch('/benevolat/actions/participants/:inscriptionId/statut', authMiddle
 });
 
 /**
- * GET /api/benevolat/stats
+ * GET /api/stats
  * Récupère les statistiques du bénévole connecté
  */
-router.get('/benevolat/stats', authMiddleware, async (req, res) => {
+router.get('/stats', authMiddleware, async (req, res) => {
   try {
     const benevoleId = req.user.id;
 
@@ -748,10 +748,10 @@ router.get('/benevolat/stats', authMiddleware, async (req, res) => {
 });
 
 /**
- * GET /api/benevolat/profile
+ * GET /api/profile
  * Récupère les informations de profil du bénévole connecté
  */
-router.get('/benevolat/profile', authMiddleware, async (req, res) => {
+router.get('/profile', authMiddleware, async (req, res) => {
   try {
     const benevoleId = req.user.id;
 
@@ -800,12 +800,12 @@ router.get('/benevolat/profile', authMiddleware, async (req, res) => {
 });
 
 /**
- * PATCH /api/benevolat/profile
+ * PATCH /api/profile
  * Met à jour les informations modifiables du profil du bénévole connecté
  * Champs modifiables : adresse, ville, code_postal, pays, telephone, vehicule
  * Champs en lecture seule : nom, prenom
  */
-router.patch('/benevolat/profile', authMiddleware, async (req, res) => {
+router.patch('/profile', authMiddleware, async (req, res) => {
   try {
     const benevoleId = req.user.id;
     const { adresse, ville, code_postal, pays, telephone, vehicule } = req.body;
@@ -876,10 +876,10 @@ router.patch('/benevolat/profile', authMiddleware, async (req, res) => {
 });
 
 /**
- * DELETE /api/benevolat/desinscription/:inscriptionId/future-occurrences
+ * DELETE /api/desinscription/:inscriptionId/future-occurrences
  * Désinscription d'un bénévole de toutes les occurrences futures d'une action récurrente
  */
-router.delete('/benevolat/desinscription/:inscriptionId/future-occurrences', authMiddleware, async (req, res) => {
+router.delete('/desinscription/:inscriptionId/future-occurrences', authMiddleware, async (req, res) => {
     try {
         const { inscriptionId } = req.params;
         const currentUserId = req.user.id;
@@ -1078,11 +1078,11 @@ router.delete('/benevolat/desinscription/:inscriptionId/future-occurrences', aut
 });
 
 /**
- * DELETE /api/benevolat/desinscription/:inscriptionId
+ * DELETE /api/desinscription/:inscriptionId
  * Désinscription d'un bénévole d'une action
  * Un admin (membre de l'association) peut désinscrire n'importe quel bénévole
  */
-router.delete('/benevolat/desinscription/:inscriptionId', authMiddleware, async (req, res) => {
+router.delete('/desinscription/:inscriptionId', authMiddleware, async (req, res) => {
     try {
         const { inscriptionId } = req.params;
         const currentUserId = req.user.id;
@@ -1255,11 +1255,11 @@ router.delete('/benevolat/desinscription/:inscriptionId', authMiddleware, async 
 
 
 /**
- * GET /api/benevolat/cron/send-reminders
+ * GET /api/cron/send-reminders
  * Envoie un email de rappel aux bénévoles inscrits à une action prévue le lendemain
  * Cette route est appelée par un cron quotidien à 14h
  */
-router.get('/benevolat/cron/send-reminders', async (req, res) => {
+router.get('/cron/send-reminders', async (req, res) => {
   try {
     console.log('[CRON REMINDERS] Début de l\'exécution du cron de rappel');
 
@@ -1427,11 +1427,11 @@ router.get('/benevolat/cron/send-reminders', async (req, res) => {
 });
 
 /**
- * GET /api/benevolat/cron/sync-to-sheets
+ * GET /api/cron/sync-to-sheets
  * Synchronise tous les bénévoles de la base de données vers le Google Sheet
  * Cette route est appelée par un cron pour maintenir le Google Sheet à jour
  */
-router.get('/benevolat/cron/sync-to-sheets', async (req, res) => {
+router.get('/cron/sync-to-sheets', async (req, res) => {
   try {
     console.log('[CRON SHEETS SYNC] Début de la synchronisation vers Google Sheets');
 

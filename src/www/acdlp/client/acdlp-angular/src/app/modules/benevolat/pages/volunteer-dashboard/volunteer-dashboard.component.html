@@ -18,7 +18,10 @@
       <!-- Header sidebar mobile -->
       <div class="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
         <div class="flex items-center justify-between px-4 mb-4">
-          <h2 class="text-lg font-medium text-gray-900">Espace Bénévole</h2>
+          <div class="flex items-center gap-3">
+            <img src="assets/images/logo.png" alt="Au Coeur De La Précarité" class="h-10" />
+            <h2 class="text-lg font-medium text-gray-900">Espace Bénévole</h2>
+          </div>
           <button 
             (click)="closeMobileSidebar()"
             class="text-gray-400 hover:text-gray-500">
@@ -30,7 +33,7 @@
         
         <!-- Navigation mobile -->
         <nav class="mt-4 flex-1 px-2 space-y-1">
-          <a routerLink="/benevolat/dashboard/actions" 
+          <a routerLink="/dashboard/actions" 
              routerLinkActive="bg-primary text-white"
              (click)="closeMobileSidebar()"
              class="group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900">
@@ -40,7 +43,7 @@
             Mes actions
           </a>
 
-          <a routerLink="/benevolat/dashboard/profile"
+          <a routerLink="/dashboard/profile"
              routerLinkActive="bg-primary text-white"
              (click)="closeMobileSidebar()"
              class="group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900">
@@ -112,13 +115,14 @@
       
       <!-- Header sidebar -->
       <div class="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
-        <div class="flex items-center flex-shrink-0 px-4">
+        <div class="flex items-center flex-shrink-0 px-4 gap-3">
+          <img src="assets/images/logo.png" alt="Au Coeur De La Précarité" class="h-10" />
           <h2 class="text-lg font-medium text-gray-900">Espace Bénévole</h2>
         </div>
         
         <!-- Navigation -->
         <nav class="mt-8 flex-1 px-2 space-y-1">
-          <a routerLink="/benevolat/dashboard/actions" 
+          <a routerLink="/dashboard/actions" 
              routerLinkActive="bg-primary text-white"
              class="group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900">
             <svg class="mr-3 h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -127,7 +131,7 @@
             Mes actions
           </a>
 
-          <a routerLink="/benevolat/dashboard/profile" 
+          <a routerLink="/dashboard/profile" 
              routerLinkActive="bg-primary text-white"
              class="group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900">
             <svg class="mr-3 h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -210,8 +214,9 @@
         </svg>
       </button>
       <div class="flex-1 px-4 flex justify-between">
-        <div class="flex-1 flex">
-          <h1 class="ml-4 text-lg font-medium text-gray-900 self-center">Espace Bénévole</h1>
+        <div class="flex-1 flex items-center">
+          <img src="assets/images/logo.png" alt="Au Coeur De La Précarité" class="h-8 ml-4" />
+          <h1 class="ml-3 text-lg font-medium text-gray-900">Espace Bénévole</h1>
         </div>
       </div>
     </div>

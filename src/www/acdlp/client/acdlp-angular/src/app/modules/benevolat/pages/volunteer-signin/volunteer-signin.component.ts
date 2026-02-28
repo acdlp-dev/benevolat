@@ -67,7 +67,7 @@ export class VolunteerSigninComponent implements OnInit {
       next: (response) => {
         console.log('Connexion bénévole réussie:', response);
         // Rediriger vers le dashboard bénévole
-        this.router.navigate(['/benevolat/dashboard']);
+        this.router.navigate(['/dashboard']);
       },
       error: (error) => {
         console.error('Erreur de connexion bénévole:', error);

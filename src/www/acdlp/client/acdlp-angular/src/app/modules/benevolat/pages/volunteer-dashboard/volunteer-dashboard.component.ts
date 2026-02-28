@@ -24,7 +24,7 @@ export class VolunteerDashboardComponent implements OnInit {
     this.loadBenevoleStats();
     
     // Rediriger automatiquement vers les actions
-    this.router.navigate(['/benevolat/dashboard/actions']);
+    this.router.navigate(['/dashboard/actions']);
   }
 
   /**
@@ -73,6 +73,6 @@ export class VolunteerDashboardComponent implements OnInit {
     sessionStorage.removeItem('volunteer_token');
     
     // Rediriger vers la page de connexion
-    this.router.navigate(['/benevolat/signin']);
+    this.router.navigate(['/signin']);
   }
 }

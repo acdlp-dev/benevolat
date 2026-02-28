@@ -1,102 +1,97 @@
-<div class="flex h-screen max-w-screen">
-  <div class="auth-bg hidden flex-1 justify-center bg-primary bg-cover lg:flex">
-    <div class="max-w-2xl space-y-4 p-8 mt-[30%] xl:mt-[20%] text-center text-white">
-      <img src="./assets/images/auth-screens.png" alt="dashboard widget" />
-    </div>
-  </div>
-  
-  <div class="flex flex-1 items-center justify-center bg-background">
-    <div class="min-h-screen w-[100%] flex flex-col">
-      <div class="container mx-auto px-4 py-8 max-w-md">
-        <h1 class="mb-4 text-center text-2xl font-bold sm:mb-8 sm:text-4xl">
-          Vérification de l'email
-        </h1>
-        
-        <div class="mb-8 text-center">
-          <p class="text-gray-600 text-lg mb-4">
-            Un code à 6 chiffres a été envoyé à :
-          </p>
-          <p class="font-semibold text-lg">{{ email }}</p>
-          <p class="text-gray-500 text-sm mt-4">
-            Temps restant : <span class="font-mono font-bold">{{ timerDisplay }}</span>
+<div class="min-h-screen bg-gray-50 flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+  <div class="max-w-md w-full">
+    <div class="container mx-auto px-4 py-8 max-w-md">
+      <div class="flex justify-center mb-6">
+        <img src="assets/images/logo.png" alt="Au Coeur De La Précarité" class="h-20" />
+      </div>
+      <h1 class="mb-4 text-center text-2xl font-bold sm:mb-8 sm:text-4xl">
+        Vérification de l'email
+      </h1>
+
+      <div class="mb-8 text-center">
+        <p class="text-gray-600 text-lg mb-4">
+          Un code à 6 chiffres a été envoyé à :
+        </p>
+        <p class="font-semibold text-lg">{{ email }}</p>
+        <p class="text-gray-500 text-sm mt-4">
+          Temps restant : <span class="font-mono font-bold">{{ timerDisplay }}</span>
+        </p>
+      </div>
+
+      <form [formGroup]="otpForm" (ngSubmit)="onSubmit()" class="space-y-6">
+
+        @if (submitError) {
+          <div class="rounded-lg bg-red-50 border border-red-200 p-4">
+            <div class="flex items-center">
+              <svg class="w-5 h-5 text-red-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+              </svg>
+              <h3 class="text-lg font-medium text-red-800">Erreur</h3>
+            </div>
+            <div class="mt-2 text-sm text-red-700">
+              <p>{{ submitErrorMessage }}</p>
+            </div>
+          </div>
+        }
+
+        <!-- Code OTP -->
+        <div>
+          <label for="code" class="block text-sm font-medium text-gray-700 mb-1">
+            Code de vérification *
+          </label>
+          <input
+            type="text"
+            id="code"
+            formControlName="code"
+            maxlength="6"
+            class="w-full px-3 py-3 text-center text-2xl font-mono tracking-widest border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+            [class.border-red-500]="isFieldInvalid('code')"
+            placeholder="000000"
+            autocomplete="off"
+          />
+          @if (isFieldInvalid('code')) {
+            <p class="mt-1 text-sm text-red-600">{{ getFieldError('code') }}</p>
+          }
+          <p class="mt-2 text-xs text-gray-500 text-center">
+            Entrez le code à 6 chiffres reçu par email
           </p>
         </div>
 
-        <form [formGroup]="otpForm" (ngSubmit)="onSubmit()" class="space-y-6">
-          
-          @if (submitError) {
-            <div class="rounded-lg bg-red-50 border border-red-200 p-4">
-              <div class="flex items-center">
-                <svg class="w-5 h-5 text-red-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
-                </svg>
-                <h3 class="text-lg font-medium text-red-800">Erreur</h3>
-              </div>
-              <div class="mt-2 text-sm text-red-700">
-                <p>{{ submitErrorMessage }}</p>
-              </div>
-            </div>
+        <!-- Submit button -->
+        <button
+          type="submit"
+          [disabled]="submitting || otpForm.invalid"
+          class="w-full px-6 py-3 bg-primary border border-transparent text-white rounded-md hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-lg font-medium"
+        >
+          @if (submitting) {
+            <svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            Vérification...
+          } @else {
+            Vérifier
           }
+        </button>
 
-          <!-- Code OTP -->
-          <div>
-            <label for="code" class="block text-sm font-medium text-gray-700 mb-1">
-              Code de vérification *
-            </label>
-            <input
-              type="text"
-              id="code"
-              formControlName="code"
-              maxlength="6"
-              class="w-full px-3 py-3 text-center text-2xl font-mono tracking-widest border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-              [class.border-red-500]="isFieldInvalid('code')"
-              placeholder="000000"
-              autocomplete="off"
-            />
-            @if (isFieldInvalid('code')) {
-              <p class="mt-1 text-sm text-red-600">{{ getFieldError('code') }}</p>
-            }
-            <p class="mt-2 text-xs text-gray-500 text-center">
-              Entrez le code à 6 chiffres reçu par email
-            </p>
-          </div>
-
-          <!-- Submit button -->
+        <!-- Resend code button -->
+        <div class="text-center">
           <button
-            type="submit"
-            [disabled]="submitting || otpForm.invalid"
-            class="w-full px-6 py-3 bg-primary border border-transparent text-white rounded-md hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-lg font-medium"
+            type="button"
+            (click)="resendCode()"
+            [disabled]="submitting"
+            class="text-primary hover:text-primary-dark font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            @if (submitting) {
-              <svg class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              Vérification...
-            } @else {
-              Vérifier
-            }
+            Renvoyer un nouveau code
           </button>
+        </div>
 
-          <!-- Resend code button -->
-          <div class="text-center">
-            <button
-              type="button"
-              (click)="resendCode()"
-              [disabled]="submitting"
-              class="text-primary hover:text-primary-dark font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Renvoyer un nouveau code
-            </button>
-          </div>
-
-          <p class="text-sm text-gray-500 text-center mt-4">
-            <a [routerLink]="['/benevolat/signin']" class="text-primary font-semibold hover:underline">
-              Retour à la connexion
-            </a>
-          </p>
-        </form>
-      </div>
+        <p class="text-sm text-gray-500 text-center mt-4">
+          <a routerLink="/signin" class="text-primary font-semibold hover:underline">
+            Retour à la connexion
+          </a>
+        </p>
+      </form>
     </div>
   </div>
 </div>

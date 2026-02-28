@@ -12,6 +12,4 @@ export class AuthLayoutComponent {
   @Input() quote: string = '';
   @Input() quoteReference: string = '';
   @Input() typewriterWords: string[] = [];
-  @Input() logoSrc: string = '';
-  @Input() logoAlt: string = '';
 }

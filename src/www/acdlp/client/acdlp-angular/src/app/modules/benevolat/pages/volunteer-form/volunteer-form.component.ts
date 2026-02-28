@@ -117,7 +117,7 @@ export class VolunteerFormComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.assoId = this.route.snapshot.params['id'] || 'default-association-id';
+    this.assoId = 'au-coeur-de-la-precarite';
 
     this.associationService.getAssociationConfig(this.assoId).subscribe({
       next: (data) => {

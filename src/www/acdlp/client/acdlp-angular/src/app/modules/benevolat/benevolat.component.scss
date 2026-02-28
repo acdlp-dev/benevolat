@@ -1,9 +1,4 @@
 // Styles pour le composant principal benevolat
-// Reprend les mêmes styles que donation.component.scss
-
-.auth-bg {
-  background-image: url('/assets/bg/auth.png');
-}
 
 .btn-donation {
   @apply inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors duration-200;

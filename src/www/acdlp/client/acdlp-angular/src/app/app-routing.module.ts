@@ -4,15 +4,15 @@ import { RouterModule, Routes } from '@angular/router';
 const routes: Routes = [
   {
     path: '',
-    loadChildren: () => import('./modules/layout/layout.module').then((m) => m.LayoutModule),
+    loadChildren: () => import('./modules/benevolat/benevolat.module').then(m => m.BenevolatModule)
   },
   {
     path: 'errors',
     loadChildren: () => import('./modules/error/error.module').then((m) => m.ErrorModule),
   },
   {
-    path: 'benevolat',
-    loadChildren: () => import('./modules/benevolat/benevolat.module').then(m => m.BenevolatModule)
+    path: 'components',
+    loadChildren: () => import('./modules/uikit/uikit.module').then((m) => m.UikitModule),
   },
   { path: '**', redirectTo: 'errors/404' },
 ];

@@ -20,7 +20,7 @@ export class VolunteerService {
    */
   saveVolunteerData(volunteerData: VolunteerFormData): Observable<SaveVolunteerResponse> {
     console.log("📦 [volunteer.service] Payload complet envoyé au back:", volunteerData);
-    return this.http.post<SaveVolunteerResponse>(`${this.apiUrl}/benevolat/signup`, volunteerData).pipe(
+    return this.http.post<SaveVolunteerResponse>(`${this.apiUrl}/signup`, volunteerData).pipe(
       map((response) => {
         console.log("💾 [volunteer.service] Réponse brute saveVolunteerData:", response);
         console.log("💾 [volunteer.service] tracking extrait:", response?.tracking);
@@ -49,7 +49,7 @@ export class VolunteerService {
 
   verifyVolunteerEmail(token: string): Observable<any> {
     console.log('🔍 [volunteer.service] Vérification email avec token:', token);
-    return this.http.get(`${this.apiUrl}/benevolat/verify-email/${token}`).pipe(
+    return this.http.get(`${this.apiUrl}/verify-email/${token}`).pipe(
       tap(response => {
         console.log('✅ [volunteer.service] Réponse vérification email:', response);
       })
@@ -64,7 +64,7 @@ export class VolunteerService {
    */
   signin(email: string, password: string): Observable<any> {
     console.log('🔐 [volunteer.service] Tentative de connexion pour:', email);
-    return this.http.post(`${this.apiUrl}/benevolat/signin`, { email, password }, {
+    return this.http.post(`${this.apiUrl}/signin`, { email, password }, {
       withCredentials: true
     }).pipe(
       tap(response => {
@@ -80,7 +80,7 @@ export class VolunteerService {
    */
   requestPasswordReset(email: string): Observable<{ message: string }> {
     console.log('🔑 [volunteer.service] Demande de réinitialisation pour:', email);
-    return this.http.post<{ message: string }>(`${this.apiUrl}/benevolat/request-password-reset`, { email }, {
+    return this.http.post<{ message: string }>(`${this.apiUrl}/request-password-reset`, { email }, {
       withCredentials: true
     }).pipe(
       tap(response => {
@@ -98,7 +98,7 @@ export class VolunteerService {
    */
   resetPasswordWithToken(token: string, newPassword: string, confirmPassword: string): Observable<{ message: string }> {
     console.log('🔑 [volunteer.service] Réinitialisation du mot de passe avec token');
-    return this.http.post<{ message: string }>(`${this.apiUrl}/benevolat/reset-password`, {
+    return this.http.post<{ message: string }>(`${this.apiUrl}/reset-password`, {
       token,
       newPassword,
       confirmPassword
@@ -120,7 +120,7 @@ export class VolunteerService {
    */
   requestOTP(email: string, confirmEmail: string, associationName: string): Observable<{ message: string; expiresIn: number }> {
     console.log('🔑 [volunteer.service] Demande OTP pour:', email);
-    return this.http.post<{ message: string; expiresIn: number }>(`${this.apiUrl}/benevolat/request-otp`, {
+    return this.http.post<{ message: string; expiresIn: number }>(`${this.apiUrl}/request-otp`, {
       email,
       confirmEmail,
       associationName
@@ -139,7 +139,7 @@ export class VolunteerService {
    */
   verifyOTP(email: string, code: string): Observable<{ message: string; token: string; email: string }> {
     console.log('🔍 [volunteer.service] Vérification OTP pour:', email);
-    return this.http.post<{ message: string; token: string; email: string }>(`${this.apiUrl}/benevolat/verify-otp`, {
+    return this.http.post<{ message: string; token: string; email: string }>(`${this.apiUrl}/verify-otp`, {
       email,
       code
     }).pipe(
@@ -157,7 +157,7 @@ export class VolunteerService {
    */
   completeSignup(token: string, volunteerData: VolunteerFormData): Observable<{ message: string; trackingId: string }> {
     console.log('📝 [volunteer.service] Complétion de l\'inscription');
-    return this.http.post<{ message: string; trackingId: string }>(`${this.apiUrl}/benevolat/complete-signup`, {
+    return this.http.post<{ message: string; trackingId: string }>(`${this.apiUrl}/complete-signup`, {
       token,
       ...volunteerData
     }).pipe(
@@ -173,7 +173,7 @@ export class VolunteerService {
    */
   getProfile(): Observable<any> {
     console.log('👤 [volunteer.service] Récupération du profil');
-    return this.http.get<any>(`${this.apiUrl}/benevolat/profile`, {
+    return this.http.get<any>(`${this.apiUrl}/profile`, {
       withCredentials: true
     }).pipe(
       tap(response => {
@@ -189,7 +189,7 @@ export class VolunteerService {
    */
   requestPasswordResetForCurrentUser(): Observable<{ message: string }> {
     console.log('🔑 [volunteer.service] Demande de réinitialisation de mot de passe pour l\'utilisateur connecté');
-    return this.http.post<{ message: string }>(`${this.apiUrl}/benevolat/request-password-reset-current-user`, {}, {
+    return this.http.post<{ message: string }>(`${this.apiUrl}/request-password-reset-current-user`, {}, {
       withCredentials: true
     }).pipe(
       tap(response => {
@@ -205,7 +205,7 @@ export class VolunteerService {
    */
   updateProfile(profileData: any): Observable<any> {
     console.log('✏️ [volunteer.service] Mise à jour du profil');
-    return this.http.patch<any>(`${this.apiUrl}/benevolat/profile`, profileData, {
+    return this.http.patch<any>(`${this.apiUrl}/profile`, profileData, {
       withCredentials: true
     }).pipe(
       tap(response => {

@@ -62,7 +62,7 @@ export class VolunteerNewPasswordComponent implements OnInit {
         
         // Rediriger vers la page de connexion après 3 secondes
         setTimeout(() => {
-          this.router.navigate(['/benevolat/signin']);
+          this.router.navigate(['/signin']);
         }, 3000);
       },
       error: (err) => {
