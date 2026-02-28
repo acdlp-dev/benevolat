@@ -24,6 +24,8 @@ certbot/conf/live/www.dev.acdlp.com-0001/privkey.pem
 .env
 .htpasswd
 
+ssl/
+
 mysql/bkp/*
 
 # Ignorer le contenu du répertoire des reçus fiscaux

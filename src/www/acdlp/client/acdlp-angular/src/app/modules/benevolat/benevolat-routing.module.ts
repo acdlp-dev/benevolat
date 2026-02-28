@@ -12,8 +12,6 @@ import { VolunteerEmailStepComponent } from './pages/volunteer-email-step/volunt
 import { VolunteerOtpVerificationComponent } from './pages/volunteer-otp-verification/volunteer-otp-verification.component';
 import { VolunteerCompleteSignupComponent } from './pages/volunteer-complete-signup/volunteer-complete-signup.component';
 import { VolunteerProfileComponent } from './pages/volunteer-profile/volunteer-profile.component';
-import { QrcodeValidationComponent } from './pages/qrcode-validation/qrcode-validation.component';
-
 const routes: Routes = [
   {
     path: '',
@@ -54,10 +52,6 @@ const routes: Routes = [
   {
     path: 'new-password/token/:token',
     component: VolunteerNewPasswordComponent,
-  },
-  {
-    path: 'qrcode/validate/:qrCodeId',
-    component: QrcodeValidationComponent
   },
   {
     path: 'dashboard',

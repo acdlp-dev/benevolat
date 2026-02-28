@@ -544,35 +544,17 @@ router.post('/backoffice/signin', async(req, res) => {
 
         const asso = assoCheck[0];
 
-        // Vérifier le statut onboarding_backoffice et bloquer si doubleChecked = false
+        // Vérifier le statut onboarding_backoffice (validation manuelle du compte)
         try {
-            const ob = await db.select('SELECT statut, amende, doubleChecked, cantine FROM onboarding_backoffice WHERE user_id = ? LIMIT 1', [user.id], 'remote');
+            const ob = await db.select('SELECT doubleChecked FROM onboarding_backoffice WHERE user_id = ? LIMIT 1', [user.id], 'remote');
             if (ob && ob.length > 0) {
-                const statut = ob[0].statut;
-                const amende = ob[0].amende;
                 const doubleChecked = ob[0].doubleChecked;
-                const cantine = ob[0].cantine;
-
-                // Bloquer si l'utilisateur n'a pas la cantine activée (utilisateur non-ACDLP)
-                if (!cantine) {
-                    return res.status(403).json({
-                        message: 'Verifiez vos identifiants'
-                    });
-                }
 
                 // Bloquer si le compte n'est pas encore validé manuellement
                 if (doubleChecked === 0 || doubleChecked === false) {
                     return res.status(403).json({
                         message: 'Votre compte est en cours de traitement par nos équipes. Nous reviendrons vers vous dès que votre compte sera activé.'
                     });
-                }
-
-                // Bloquer si statut non-ok (amende impayée)
-                if (statut && statut !== 'ok') {
-                    const whatsapp = process.env.BACKOFFICE_WHATSAPP_NUMBER || '+33 6 78 92 04 45';
-                    const amendeText = (amende !== null && amende !== undefined && amende !== '') ? `Montant dû: ${amende} €.` : '';
-                    const message = `Votre compte est bloqué car vous n'avez pas récupéré votre commande. ${amendeText} Pour débloquer, veuillez payer la compensation et envoyer une preuve de paiement via WhatsApp au ${whatsapp}. Les commandes futures sont annulées dans l'attente de la preuve de paiement.`;
-                    return res.status(403).json({ message });
                 }
             }
         } catch (e) {
@@ -875,9 +857,6 @@ router.post('/backoffice/signup', uploadSignup.single('document'), async(req, re
             await db.insert('onboarding_backoffice', {
                 user_id: newUserId,
                 asso_id: assoId,
-                donations: false,
-                cantine: true,
-                suiviVehicule: true,
                 benevolat: true,
                 doubleChecked: false,
                 isOnboarded: true,

@@ -24,10 +24,6 @@ console.log('  - Loading database...');
 const databaseRoute = require('./routes/database');
 console.log('  - Loading assos...');
 const assosRoute = require('./routes/assos');
-console.log('  - Loading backOffice...');
-const donsBackoffice = require('./routes/backOffice');
-console.log('  - Loading cantine...');
-const cantineRoute = require('./routes/cantine');
 console.log('  - Loading benevoles...');
 const benevolesRoute = require('./routes/benevoles');
 console.log('✅ Routes loaded');
@@ -57,8 +53,6 @@ app.use(httpLogger);
 app.use('/api', authRoutes);
 app.use('/api', databaseRoute);
 app.use('/api', assosRoute);
-app.use('/api', donsBackoffice);
-app.use('/api', cantineRoute);
 app.use('/api', benevolesRoute);
 
 

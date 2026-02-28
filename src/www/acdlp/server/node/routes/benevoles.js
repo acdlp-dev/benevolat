@@ -8,8 +8,6 @@ const googleSheetsService = require('../services/googleSheetsService');
 const icsService = require('../services/icsService');
 const { authMiddleware } = require('./auth');
 
-// QR code library import
-const qrcode = require('qrcode');
 
 /**
  * GET /api/benevolat/actions/:associationName
@@ -2372,502 +2370,97 @@ router.get('/benevolat/cron/sync-to-sheets', async (req, res) => {
 });
 
 // =============================================
-// NOUVEAUX ENDPOINTS POUR LE SYSTÈME DE CARTE REPAS
+// ENDPOINTS INFOS ASSOCIATION (déplacés de backOffice.js)
 // =============================================
 
-  /**
-   * POST /api/benevolat/qrcode/generate
-   * Génère un QR code pour un bénéficiaire avec URL de validation
-   */
-  router.post('/benevolat/qrcode/generate', authMiddleware, async (req, res) => {
-    try {
-      const { nom, prenom, nombre_beneficiaires, frontend_url } = req.body;
-      const associationNom = req.user.associationName || req.user.uri || req.user.nameAsso || 'ACDLP';
-      const createdBy = req.user.id;
+/**
+ * GET /api/getInfosAsso
+ * Récupère les informations de l'association via le SIREN du JWT
+ */
+router.get('/getInfosAsso', authMiddleware, async (req, res) => {
+  try {
+    const siren = req.user.siren;
+    if (!siren) {
+      return res.status(400).json({ message: 'SIREN manquant.' });
+    }
 
-      // Validation des champs obligatoires
-      if (!nom || !prenom || !nombre_beneficiaires) {
-        return res.status(400).json({
-          success: false,
-          message: 'Les champs nom, prenom et nombre_beneficiaires sont obligatoires'
-        });
-      }
+    const sql = `SELECT * FROM Assos WHERE siren = ?`;
+    const results = await db.select(sql, [siren], 'remote');
 
-      // Validation du nombre de bénéficiaires
-      if (nombre_beneficiaires < 1 || nombre_beneficiaires > 10) {
-        return res.status(400).json({
-          success: false,
-          message: 'Le nombre de bénéficiaires doit être compris entre 1 et 10'
-        });
-      }
+    if (results.length === 0) {
+      return res.status(404).json({ message: 'Association non trouvée.' });
+    }
 
-      // Générer un identifiant unique pour le QR code
-      const qrCodeId = `QR-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    return res.status(200).json({ data: results[0] });
+  } catch (err) {
+    console.error('[Info Asso Error]:', err);
+    return res.status(500).json({ message: 'Erreur lors de la récupération des infos association.' });
+  }
+});
 
-      // Créer les données du QR code (format JSON)
-      const qrCodeData = {
-        id: qrCodeId,
-        nom,
-        prenom,
-        nombre_beneficiaires: parseInt(nombre_beneficiaires),
-        association: associationNom,
-        created_at: new Date().toISOString(),
-        created_by: createdBy
+/**
+ * POST /api/updateInfosAsso
+ * Met à jour les informations de l'association
+ */
+router.post('/updateInfosAsso', authMiddleware, async (req, res) => {
+  try {
+    const formData = req.body || {};
+    const siren = req.user?.siren || formData.siren;
+    if (!siren) {
+      return res.status(400).json({ message: 'SIREN manquant.' });
+    }
+
+    const source = formData.source || formData._source || 'infos';
+
+    let updatePayload;
+    if (source === 'infos') {
+      updatePayload = {
+        nom: formData.association_name ?? null,
+        surnom: formData.nickname ?? '',
+        type: formData.type ?? null,
+        adresse: formData.address ?? null,
+        ville: formData.city ?? null,
+        code_postal: formData.postal_code ?? null,
+        tel: formData.phone ?? null,
+        email: formData.email ?? null
       };
-
-      // Créer l'URL de validation
-      const requestedBaseUrl = typeof frontend_url === 'string' ? frontend_url.trim() : '';
-      const baseUrl = (requestedBaseUrl || process.env.FRONTEND_URL || 'https://acdlp.fr').replace(/\/$/, '');
-      const validationUrl = `${baseUrl}/benevolat/qrcode/validate/${qrCodeId}`;
-
-      // Stocker dans la base de données avec l'URL de validation
-      const insertResult = await db.insert('qrcode_cards', {
-        nom,
-        prenom,
-        nombre_beneficiaires: parseInt(nombre_beneficiaires),
-        qrcode_data: JSON.stringify(qrCodeData),
-        validation_url: validationUrl,
-        created_by: createdBy,
-        association_nom: associationNom || 'acdlp', // Valeur par défaut si undefined
-        statut: 'active'
-      }, 'remote');
-
-      // Créer les données du QR code avec l'URL de validation
-      const qrCodeContent = {
-        ...qrCodeData,
-        validation_url: validationUrl
-      };
-
-      // Générer le QR code avec l'URL de validation uniquement (scan direct via appareil photo)
-      const qrCodeImage = await qrcode.toDataURL(validationUrl);
-
-      return res.status(201).json({
-        success: true,
-        message: 'QR code généré avec succès',
-        qr_code: {
-          id: insertResult.insertId,
-          qr_code_id: qrCodeId,
-          nom,
-          prenom,
-          nombre_beneficiaires: parseInt(nombre_beneficiaires),
-          association_nom: associationNom || 'acdlp',
-          validation_url: validationUrl,
-          created_at: new Date().toISOString(),
-          qr_code_image: qrCodeImage,
-          instructions: 'Scannez ce QR code avec l\'appareil photo de votre téléphone pour valider la récupération du repas.'
-        }
-      });
-  } catch (err) {
-    console.error('[Generate QR Code Error]:', err);
-    return res.status(500).json({
-      success: false,
-      message: 'Erreur lors de la génération du QR code',
-      error: err.message
-    });
-  }
-});
-
-
-/**
- * GET /api/benevolat/qrcode/pickups
- * Récupère la liste des récupérations de repas
- */
-router.get('/benevolat/qrcode/pickups', authMiddleware, async (req, res) => {
-  try {
-    const associationKey = req.user.associationName || req.user.uri || req.user.nameAsso;
-    const associationNames = [];
-    if (associationKey) {
-      associationNames.push(associationKey);
-      if (req.user.uri || associationKey) {
-        const assoRows = await db.select('SELECT nom FROM Assos WHERE uri = ? LIMIT 1', [associationKey], 'remote');
-        if (assoRows && assoRows.length > 0 && assoRows[0].nom && assoRows[0].nom !== associationKey) {
-          associationNames.push(assoRows[0].nom);
-        }
-      }
-    }
-    if (associationNames.length === 0) {
-      associationNames.push('acdlp');
-    }
-    const { limit = 100, offset = 0, date_from, date_to } = req.query;
-
-    const limitNumber = parseInt(limit, 10) || 100;
-    const offsetNumber = parseInt(offset, 10) || 0;
-
-    let query = `
-      SELECT
-        mp.id,
-        mp.scan_date,
-        mp.nombre_repas,
-        mp.statut,
-        qc.nom,
-        qc.prenom,
-        qc.nombre_beneficiaires,
-        b.nom as volunteer_nom,
-        b.prenom as volunteer_prenom
-      FROM meal_pickups mp
-      JOIN qrcode_cards qc ON mp.qrcode_card_id = qc.id
-      LEFT JOIN benevoles b ON mp.volunteer_id = b.id
-      WHERE qc.association_nom IN (${associationNames.map(() => '?').join(', ')})
-    `;
-
-    const params = [...associationNames];
-
-    // Filtre par date
-    if (date_from) {
-      query += ' AND DATE(mp.scan_date) >= ?';
-      params.push(date_from);
-    }
-
-    if (date_to) {
-      query += ' AND DATE(mp.scan_date) <= ?';
-      params.push(date_to);
-    }
-
-    const safeLimit = Number.isFinite(limitNumber) ? Math.max(0, limitNumber) : 100;
-    const safeOffset = Number.isFinite(offsetNumber) ? Math.max(0, offsetNumber) : 0;
-    query += ` ORDER BY mp.scan_date DESC LIMIT ${safeLimit} OFFSET ${safeOffset}`;
-
-    const pickups = await db.select(query, params, 'remote');
-
-    // Compter le total
-    let countQuery = `
-      SELECT COUNT(*) as total
-      FROM meal_pickups mp
-      JOIN qrcode_cards qc ON mp.qrcode_card_id = qc.id
-      WHERE qc.association_nom IN (${associationNames.map(() => '?').join(', ')})
-    `;
-
-    const countParams = [...associationNames];
-
-    if (date_from) {
-      countQuery += ' AND DATE(mp.scan_date) >= ?';
-      countParams.push(date_from);
-    }
-
-    if (date_to) {
-      countQuery += ' AND DATE(mp.scan_date) <= ?';
-      countParams.push(date_to);
-    }
-
-    const countResult = await db.select(countQuery, countParams, 'remote');
-    const total = countResult[0]?.total || 0;
-
-    return res.status(200).json({
-      success: true,
-      pickups: pickups || [],
-      total: total,
-      limit: limitNumber,
-      offset: offsetNumber
-    });
-  } catch (err) {
-    console.error('[Get Meal Pickups Error]:', err);
-    return res.status(500).json({
-      success: false,
-      message: 'Erreur lors de la récupération des enregistrements',
-      error: err.message
-    });
-  }
-});
-
-/**
- * GET /api/benevolat/qrcode/cards
- * Récupère la liste des cartes QR code générées
- */
-router.get('/benevolat/qrcode/cards', authMiddleware, async (req, res) => {
-  try {
-    const associationKey = req.user.associationName || req.user.uri || req.user.nameAsso;
-    const associationNames = [];
-    if (associationKey) {
-      associationNames.push(associationKey);
-      const assoRows = await db.select('SELECT nom FROM Assos WHERE uri = ? LIMIT 1', [associationKey], 'remote');
-      if (assoRows && assoRows.length > 0 && assoRows[0].nom && assoRows[0].nom !== associationKey) {
-        associationNames.push(assoRows[0].nom);
-      }
-    }
-    if (associationNames.length === 0) {
-      associationNames.push('acdlp');
-    }
-    const { limit = 100, offset = 0, statut } = req.query;
-
-    const limitNumber = parseInt(limit, 10) || 100;
-    const offsetNumber = parseInt(offset, 10) || 0;
-
-    let query = `
-      SELECT
-        qc.id,
-        qc.nom,
-        qc.prenom,
-        qc.nombre_beneficiaires,
-        qc.qrcode_data,
-        qc.created_at,
-        qc.statut,
-        qc.validation_url,
-        (SELECT MAX(mp.scan_date) FROM meal_pickups mp WHERE mp.qrcode_card_id = qc.id) AS last_scan_date,
-        (SELECT mp2.statut FROM meal_pickups mp2 WHERE mp2.qrcode_card_id = qc.id ORDER BY mp2.scan_date DESC LIMIT 1) AS last_scan_status
-      FROM qrcode_cards qc
-      WHERE qc.association_nom IN (${associationNames.map(() => '?').join(', ')})
-    `;
-
-    const params = [...associationNames];
-
-    if (statut) {
-      query += ' AND statut = ?';
-      params.push(statut);
-    }
-
-    const safeLimit = Number.isFinite(limitNumber) ? Math.max(0, limitNumber) : 100;
-    const safeOffset = Number.isFinite(offsetNumber) ? Math.max(0, offsetNumber) : 0;
-    query += ` ORDER BY created_at DESC LIMIT ${safeLimit} OFFSET ${safeOffset}`;
-
-    const cards = await db.select(query, params, 'remote');
-
-    // Compter le total
-    let countQuery = `
-      SELECT COUNT(*) as total
-      FROM qrcode_cards
-      WHERE association_nom IN (${associationNames.map(() => '?').join(', ')})
-    `;
-
-    const countParams = [...associationNames];
-
-    if (statut) {
-      countQuery += ' AND statut = ?';
-      countParams.push(statut);
-    }
-
-    const countResult = await db.select(countQuery, countParams, 'remote');
-    const total = countResult[0]?.total || 0;
-
-    return res.status(200).json({
-      success: true,
-      cards: cards || [],
-      total: total,
-      limit: limitNumber,
-      offset: offsetNumber
-    });
-  } catch (err) {
-    console.error('[Get QR Code Cards Error]:', err);
-    return res.status(500).json({
-      success: false,
-      message: 'Erreur lors de la récupération des cartes QR code',
-      error: err.message
-    });
-  }
-});
-
-/**
- * GET /api/benevolat/qrcode/cards/:id/qr-image
- * Récupère une carte et génère le QR code pour téléchargement
- */
-router.get('/benevolat/qrcode/cards/:id/qr-image', authMiddleware, async (req, res) => {
-  try {
-    const cardId = parseInt(req.params.id, 10);
-    if (!Number.isFinite(cardId)) {
-      return res.status(400).json({ success: false, message: 'ID de carte invalide' });
-    }
-
-    const associationKey = req.user.associationName || req.user.uri || req.user.nameAsso;
-    const associationNames = [];
-    if (associationKey) {
-      associationNames.push(associationKey);
-      const assoRows = await db.select('SELECT nom FROM Assos WHERE uri = ? LIMIT 1', [associationKey], 'remote');
-      if (assoRows && assoRows.length > 0 && assoRows[0].nom && assoRows[0].nom !== associationKey) {
-        associationNames.push(assoRows[0].nom);
-      }
-    }
-    if (associationNames.length === 0) {
-      associationNames.push('acdlp');
-    }
-
-    const query = `
-      SELECT id, nom, prenom, nombre_beneficiaires, created_at, statut, validation_url, association_nom
-      FROM qrcode_cards
-      WHERE id = ? AND association_nom IN (${associationNames.map(() => '?').join(', ')})
-      LIMIT 1
-    `;
-    const params = [cardId, ...associationNames];
-    const cards = await db.select(query, params, 'remote');
-
-    if (!cards || cards.length === 0) {
-      return res.status(404).json({ success: false, message: 'Carte introuvable' });
-    }
-
-    const card = cards[0];
-    if (!card.validation_url) {
-      return res.status(400).json({ success: false, message: 'URL de validation manquante' });
-    }
-
-    const qr_code_image = await qrcode.toDataURL(card.validation_url);
-
-    return res.status(200).json({
-      success: true,
-      card: { ...card, qr_code_image }
-    });
-  } catch (err) {
-    console.error('[Get QR Code Card Image Error]:', err);
-    return res.status(500).json({
-      success: false,
-      message: 'Erreur lors de la récupération de la carte',
-      error: err.message
-    });
-  }
-});
-
-/**
- * GET /api/benevolat/qrcode/validate/:qrCodeId
- * Valide une récupération de repas via un lien de validation
- * Accessible sans authentification pour permettre le scan direct
- */
-router.get('/benevolat/qrcode/validate/:qrCodeId', async (req, res) => {
-  try {
-    const { qrCodeId } = req.params;
-
-    // Vérifier que le QR code existe dans la base de données
-    const qrCardQuery = 'SELECT id, nom, prenom, nombre_beneficiaires, statut, association_nom FROM qrcode_cards WHERE qrcode_data LIKE ?';
-    const qrCards = await db.select(qrCardQuery, [`%${qrCodeId}%`], 'remote');
-
-    if (!qrCards || qrCards.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'QR code introuvable ou invalide'
-      });
-    }
-
-    const qrCard = qrCards[0];
-
-    if (qrCard.statut !== 'active') {
-      return res.status(400).json({
-        success: false,
-        message: 'Ce QR code n\'est pas actif'
-      });
-    }
-
-    // Vérifier si un scan a déjà été effectué aujourd'hui
-    const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
-
-    const existingScanQuery = `
-      SELECT id FROM meal_pickups
-      WHERE qrcode_card_id = ? AND DATE(scan_date) = ?
-    `;
-    const existingScans = await db.select(existingScanQuery, [qrCard.id, todayStr], 'remote');
-
-    if (existingScans && existingScans.length > 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Repas déjà reçu aujourd\'hui'
-      });
-    }
-
-    // Enregistrer la récupération
-    const insertResult = await db.insert('meal_pickups', {
-      qrcode_card_id: qrCard.id,
-      scan_date: new Date(),
-      volunteer_id: null, // Pas de bénévole associé pour les validations directes
-      nombre_repas: qrCard.nombre_beneficiaires,
-      association_nom: qrCard.association_nom,
-      statut: 'success',
-      validation_method: 'direct_link'
-    }, 'remote');
-
-    // Retourner une réponse JSON pour les applications mobiles
-    // ou une page HTML simple pour les navigateurs
-    const acceptHeader = req.headers.accept || '';
-
-    if (acceptHeader.includes('application/json')) {
-      return res.status(200).json({
-        success: true,
-        message: 'Récupération de repas validée avec succès',
-        validation: {
-          id: insertResult.insertId,
-          scan_date: new Date().toISOString(),
-          nombre_repas: qrCard.nombre_beneficiaires,
-          beneficiary: {
-            nom: qrCard.nom,
-            prenom: qrCard.prenom,
-            nombre_beneficiaires: qrCard.nombre_beneficiaires
-          }
-        }
-      });
     } else {
-      // Retourner une page HTML simple pour les navigateurs
-      const htmlResponse = `
-        <!DOCTYPE html>
-        <html lang="fr">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Validation réussie - acdlp</title>
-            <style>
-                body {
-                    font-family: Arial, sans-serif;
-                    text-align: center;
-                    padding: 20px;
-                    background-color: #f5f5f5;
-                }
-                .container {
-                    max-width: 600px;
-                    margin: 0 auto;
-                    background-color: white;
-                    padding: 30px;
-                    border-radius: 10px;
-                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-                }
-                .success-icon {
-                    color: #4CAF50;
-                    font-size: 60px;
-                    margin-bottom: 20px;
-                }
-                .success-message {
-                    color: #4CAF50;
-                    font-size: 24px;
-                    margin-bottom: 30px;
-                }
-                .beneficiary-info {
-                    background-color: #f9f9f9;
-                    padding: 15px;
-                    border-radius: 5px;
-                    margin: 20px 0;
-                    text-align: left;
-                }
-                .footer {
-                    margin-top: 30px;
-                    color: #666;
-                    font-size: 14px;
-                }
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <div class="success-icon">✓</div>
-                <div class="success-message">Validation réussie !</div>
-                <p>Votre repas a été validé avec succès.</p>
-
-                <div class="beneficiary-info">
-                    <h3>Bénéficiaire :</h3>
-                    <p><strong>Nom :</strong> ${qrCard.nom} ${qrCard.prenom}</p>
-                    <p><strong>Nombre de repas :</strong> ${qrCard.nombre_beneficiaires}</p>
-                    <p><strong>Date :</strong> ${new Date().toLocaleString('fr-FR')}</p>
-                </div>
-
-                <div class="footer">
-                    <p>Merci d'utiliser le système de carte repas acdlp.</p>
-                    <p>Cette validation est valable pour aujourd'hui uniquement.</p>
-                </div>
-            </div>
-        </body>
-        </html>
-      `;
-
-      return res.status(200).send(htmlResponse);
+      updatePayload = {
+        nom: formData.association_name,
+        surnom: formData.nickname,
+        type: formData.type,
+        isMosquee: formData.is_cultural === 'yes' ? 'oui' : (formData.is_cultural === 'no' ? 'non' : undefined),
+        qualite: formData.quality,
+        objet: formData.purpose,
+        site: formData.website,
+        codeCouleur: formData.color,
+        adresse: formData.address,
+        ville: formData.city,
+        code_postal: formData.postal_code,
+        tel: formData.phone,
+        email: formData.email,
+        signataire_prenom: formData.fiscal_receipt_first_name,
+        signataire_nom: formData.fiscal_receipt_last_name,
+        signataire_role: formData.fiscal_receipt_status,
+        benevoles_resp_email: formData.benevoles_resp_email
+      };
     }
-  } catch (err) {
-    console.error('[Validate QR Code Error]:', err);
-    return res.status(500).json({
-      success: false,
-      message: 'Erreur lors de la validation du QR code',
-      error: err.message
+
+    const sanitizedPayload = Object.keys(updatePayload).reduce((acc, key) => {
+      const value = updatePayload[key];
+      if (value !== undefined) acc[key] = value;
+      return acc;
+    }, {});
+
+    await db.update('Assos', sanitizedPayload, 'siren = ?', [siren], 'remote');
+
+    return res.status(200).json({
+      message: `Informations de l'association mises à jour avec succès (${source}).`,
+      success: true
     });
+  } catch (err) {
+    console.error('[Info Asso Error]:', err);
+    return res.status(500).json({ message: 'Erreur lors de la mise à jour des infos association.' });
   }
 });
 

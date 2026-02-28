@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map, tap } from 'rxjs/operators';
 import { environment } from 'src/environments/environment';
@@ -11,8 +11,6 @@ import { VolunteerFormData, SaveVolunteerResponse } from '../models/volunteer.mo
 export class VolunteerService {
   // L'URL de base de votre API (par exemple : http://localhost:4242/api)
   private apiUrl = environment.apiUrl; 
-  private frontendUrl = environment.apiUrl.replace(/\/api\/?$/, '');
-  
   constructor(private http: HttpClient) {}
 
   /**
@@ -216,121 +214,4 @@ export class VolunteerService {
     );
   }
 
-  // =============================================
-  // NOUVELLES MÉTHODES POUR LE SYSTÈME DE CARTE REPAS
-  // =============================================
-
-  /**
-   * Génère un QR code pour un bénéficiaire
-   * @param nom Nom du bénéficiaire
-   * @param prenom Prénom du bénéficiaire
-   * @param nombreBeneficiaires Nombre de bénéficiaires dans la famille
-   * @returns Un observable contenant la réponse du serveur
-   */
-  generateQRCode(nom: string, prenom: string, nombreBeneficiaires: number): Observable<any> {
-    console.log('📱 [volunteer.service] Génération de QR code pour:', nom, prenom);
-    return this.http.post<any>(`${this.apiUrl}/benevolat/qrcode/generate`, {
-      nom,
-      prenom,
-      nombre_beneficiaires: nombreBeneficiaires,
-      frontend_url: this.frontendUrl
-    }, {
-      withCredentials: true
-    }).pipe(
-      tap(response => {
-        console.log('✅ [volunteer.service] QR code généré:', response);
-      })
-    );
-  }
-
-  /**
-   * Récupère la liste des récupérations de repas
-   * @param limit Limite de résultats
-   * @param offset Décalage
-   * @param dateFrom Date de début pour le filtrage
-   * @param dateTo Date de fin pour le filtrage
-   * @returns Un observable contenant la liste des récupérations
-   */
-  getMealPickups(limit: number = 100, offset: number = 0, dateFrom?: string, dateTo?: string): Observable<any> {
-    console.log('📋 [volunteer.service] Récupération des enregistrements de repas');
-    
-    let params = new HttpParams()
-      .set('limit', limit.toString())
-      .set('offset', offset.toString());
-    
-    if (dateFrom) {
-      params = params.set('date_from', dateFrom);
-    }
-    
-    if (dateTo) {
-      params = params.set('date_to', dateTo);
-    }
-    
-    return this.http.get<any>(`${this.apiUrl}/benevolat/qrcode/pickups`, {
-      params,
-      withCredentials: true
-    }).pipe(
-      tap(response => {
-        console.log('✅ [volunteer.service] Enregistrements récupérés:', response);
-      })
-    );
-  }
-
-  /**
-   * Récupère la liste des cartes QR code générées
-   * @param limit Limite de résultats
-   * @param offset Décalage
-   * @param statut Statut des cartes à filtrer
-   * @returns Un observable contenant la liste des cartes
-   */
-  getQRCodeCards(limit: number = 100, offset: number = 0, statut?: string): Observable<any> {
-    console.log('📋 [volunteer.service] Récupération des cartes QR code');
-
-    let params = new HttpParams()
-      .set('limit', limit.toString())
-      .set('offset', offset.toString());
-
-    if (statut) {
-      params = params.set('statut', statut);
-    }
-
-    return this.http.get<any>(`${this.apiUrl}/benevolat/qrcode/cards`, {
-      params,
-      withCredentials: true
-    }).pipe(
-      tap(response => {
-        console.log('✅ [volunteer.service] Cartes QR code récupérées:', response);
-      })
-    );
-  }
-
-  /**
-   * Récupère une carte avec son QR code pour téléchargement
-   * @param cardId ID de la carte
-   * @returns Un observable contenant la carte et l'image du QR code
-   */
-  getQRCodeCardWithImage(cardId: number): Observable<any> {
-    console.log('📋 [volunteer.service] Récupération de la carte QR code:', cardId);
-    return this.http.get<any>(`${this.apiUrl}/benevolat/qrcode/cards/${cardId}/qr-image`, {
-      withCredentials: true
-    }).pipe(
-      tap(response => {
-        console.log('✅ [volunteer.service] Carte QR code récupérée:', response);
-      })
-    );
-  }
-
-  /**
-   * Valide un QR code via l'URL de validation directe
-   * @param qrCodeId ID du QR code à valider
-   * @returns Un observable contenant la réponse du serveur
-   */
-  validateQRCode(qrCodeId: string): Observable<any> {
-    console.log('📱 [volunteer.service] Validation de QR code:', qrCodeId);
-    return this.http.get<any>(`${this.apiUrl}/benevolat/qrcode/validate/${qrCodeId}`).pipe(
-      tap(response => {
-        console.log('✅ [volunteer.service] QR code validé:', response);
-      })
-    );
-  }
 }
