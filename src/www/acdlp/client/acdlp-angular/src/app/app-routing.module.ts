@@ -14,10 +14,6 @@ const routes: Routes = [
     path: 'benevolat',
     loadChildren: () => import('./modules/benevolat/benevolat.module').then(m => m.BenevolatModule)
   },
-  {
-    path: 'backoffice-auth',
-    loadChildren: () => import('./modules/backoffice-auth/backoffice-auth.module').then(m => m.BackofficeAuthModule)
-  },
   { path: '**', redirectTo: 'errors/404' },
 ];
 

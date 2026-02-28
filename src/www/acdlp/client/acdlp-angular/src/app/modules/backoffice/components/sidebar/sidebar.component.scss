@@ -1,8 +1,0 @@
-.sidebar-item {
-    @apply flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors w-full text-left text-gray-600 hover:text-purple-700 hover:bg-purple-50;
-  
-    &.active {
-      @apply bg-purple-100 text-purple-700;
-    }
-  }
-  

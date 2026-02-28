@@ -108,7 +108,7 @@ export class ProfileMenuComponent implements OnInit {
     // Clear any session data and redirect to login
     localStorage.clear();
     sessionStorage.clear();
-    this.router.navigate(['/backoffice-auth/signin']);
+    this.router.navigate(['/benevolat/signin']);
   }
 
   toggleThemeMode(): void {

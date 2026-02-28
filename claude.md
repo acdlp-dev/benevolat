@@ -1,10 +1,10 @@
-# ACDLP - Context for Claude AI
+# ACDLP Bénévolat - Context for Claude AI
 
 ## Vue d'ensemble du projet
 
-**ACDLP** (Au Coeur de la Précarité) est une plateforme web de gestion du bénévolat associatif. Elle permet aux associations de recruter, coordonner et suivre leurs bénévoles, et aux bénévoles de s'inscrire à des actions de solidarité.
+**ACDLP Bénévolat** est l'espace bénévole de l'association Au Coeur de la Précarité. Il permet aux bénévoles de s'inscrire, se connecter, consulter un calendrier d'actions et s'y inscrire.
 
-> Les modules cantine (distribution repas), QR code (cartes repas), suivi véhicule et l'ancien backOffice.js ont été supprimés.
+> Le backoffice admin a été externalisé vers le projet **boAcdlp** (backend + frontend séparés). Les modules cantine, QR code et suivi véhicule ont été supprimés.
 
 ---
 
@@ -39,28 +39,25 @@ acdlp/
 ├── src/www/acdlp/
 │   ├── client/acdlp-angular/            # Frontend Angular 18
 │   │   └── src/app/
-│   │       ├── core/                    # Guards, interceptors
+│   │       ├── core/                    # Interceptors
 │   │       ├── modules/
-│   │       │   ├── backoffice/          # Panel admin (gestion bénévoles)
-│   │       │   ├── backoffice-auth/     # Auth admin
-│   │       │   ├── benevolat/           # Espace bénévole
+│   │       │   ├── benevolat/           # Espace bénévole (seul module métier)
 │   │       │   ├── error/               # Pages erreur (404, 500, 403)
-│   │       │   ├── layout/              # Layout (navbar, sidebar, footer)
+│   │       │   ├── layout/              # Layout (navbar, footer)
 │   │       │   └── uikit/              # Composants UI réutilisables
 │   │       └── shared/                  # Composants, services, pipes partagés
 │   └── server/node/                     # Backend Node.js/Express
 │       ├── server.js                    # Point d'entrée
 │       ├── routes/                      # 4 fichiers routes
-│       │   ├── auth.js                  # Auth admin + bénévoles (OTP)
-│       │   ├── benevoles.js             # Gestion bénévoles + actions
+│       │   ├── auth.js                  # Auth bénévoles (OTP, signin, password reset)
+│       │   ├── benevoles.js             # Actions, inscriptions, profil, crons
 │       │   ├── assos.js                 # Lookup associations
 │       │   └── database.js              # Utilitaires DB
-│       ├── services/                    # 5 services métier
+│       ├── services/                    # 4 services métier
 │       │   ├── bdd.js                   # Abstraction MySQL (dual pool)
 │       │   ├── mailService.js           # Envoi emails Mailjet
 │       │   ├── googleSheetsService.js   # Sync Google Sheets
-│       │   ├── icsService.js            # Génération fichiers iCalendar
-│       │   └── inseeService.js          # Validation SIREN/SIRET
+│       │   └── icsService.js            # Génération fichiers iCalendar
 │       ├── credentials/                 # Credentials API (gitignored)
 │       └── crons/                       # Tâches planifiées
 ├── nginx/                               # Config Nginx (prod, staging, dev)
@@ -76,21 +73,14 @@ acdlp/
 
 ---
 
-## Système d'Authentification
+## Authentification Bénévoles
 
-L'application gère **2 types d'utilisateurs** avec des flux séparés :
+Un seul type d'utilisateur : **les bénévoles**.
 
-### 1. Associations (Admin)
-- **Tables DB**: `users` + `Assos` + `onboarding_backoffice`
-- **Flux**: Signup SIREN → Upload justificatif → Vérification email → Login
-- **Routes frontend**: `/backoffice-auth/*`, `/backoffice/*`
-- **Validation**: API INSEE pour SIREN
-
-### 2. Bénévoles
 - **Table DB**: `benevoles`
 - **Flux OTP**: Email → Code 6 chiffres → Profil complet → Login
 - **Routes frontend**: `/benevolat/*`
-- **Statuts**: `restreint` → `confirmé` (auto-promu à la 1ère présence) → `responsable` (promu par admin)
+- **Statuts**: `restreint` → `confirmé` (auto-promu à la 1ère présence) → `responsable` (promu par le backoffice externe)
 
 ### Sécurité
 - JWT dans cookies HttpOnly (`secure: true`, `sameSite: 'strict'`, expiration 1h)
@@ -108,17 +98,7 @@ Toutes les routes sont préfixées par `/api`. 4 fichiers routes montés dans `s
 
 | Méthode | Endpoint | Fonction |
 |---------|----------|----------|
-| POST | `/api/backoffice/signin` | Login admin |
-| POST | `/api/backoffice/signup` | Inscription admin (multer upload) |
-| GET | `/api/backoffice/me` | Info admin courant |
 | POST | `/api/logout` | Déconnexion |
-| GET | `/api/verify-email/:token` | Vérification email admin |
-| POST | `/api/set-password` | Définir mot de passe admin |
-| POST | `/api/request-password-reset` | Demande reset mdp admin |
-| POST | `/api/reset-password` | Reset mdp admin |
-| POST | `/api/resend-verification-link` | Renvoyer lien vérification |
-| GET | `/api/sirene/:siren` | Lookup SIREN (INSEE) |
-| POST | `/api/backoffice/upload-document-justificatif` | Upload justificatif |
 | POST | `/api/benevolat/request-otp` | Demande code OTP bénévole |
 | POST | `/api/benevolat/verify-otp` | Vérification code OTP |
 | POST | `/api/benevolat/complete-signup` | Inscription complète bénévole |
@@ -141,19 +121,6 @@ Toutes les routes sont préfixées par `/api`. 4 fichiers routes montés dans `s
 | GET | `/api/benevolat/stats` | JWT | Stats bénévole (inscrit/présent/absent) |
 | GET | `/api/benevolat/profile` | JWT | Profil bénévole |
 | PATCH | `/api/benevolat/profile` | JWT | MAJ profil bénévole |
-| GET | `/api/backoffice/benevoles` | JWT | Liste bénévoles (admin) |
-| GET | `/api/backoffice/benevoles/responsables` | JWT | Liste responsables |
-| PATCH | `/api/backoffice/benevoles/:email/type` | JWT | Changer type bénévole |
-| PATCH | `/api/backoffice/benevoles/:email` | JWT | MAJ complète bénévole (admin) |
-| GET | `/api/backoffice/benevoles/:email/actions` | JWT | Historique actions d'un bénévole |
-| GET | `/api/backoffice/actions/list` | JWT | Liste toutes les actions |
-| POST | `/api/backoffice/actions` | JWT | Créer action (auto-inscription responsable) |
-| PUT | `/api/backoffice/actions/:id` | JWT | MAJ action |
-| GET | `/api/backoffice/actions/:actionId/participants` | JWT | Participants (vue admin) |
-| POST | `/api/backoffice/actions/:actionId/mask` | JWT | Masquer une occurrence |
-| DELETE | `/api/backoffice/actions/:actionId/mask` | JWT | Démasquer une occurrence |
-| GET | `/api/getInfosAsso` | JWT | Infos association |
-| POST | `/api/updateInfosAsso` | JWT | MAJ infos association |
 | GET | `/api/benevolat/cron/send-reminders` | - | Cron : rappels J-1 |
 | GET | `/api/benevolat/cron/sync-to-sheets` | - | Cron : sync Google Sheets |
 
@@ -175,40 +142,28 @@ Toutes les routes sont préfixées par `/api`. 4 fichiers routes montés dans `s
 
 ## Base de Données
 
-### Tables actives
+### Tables utilisées par ce projet
 
 | Table | Fonction |
 |-------|----------|
-| `users` | Comptes admin (id, email, password, firstName, lastName, role, siren, is_verified, verification_token) |
-| `Assos` | Détails associations (siren, nom, uri, logoUrl, signataire, adresse, tel, benevoles_resp_email) |
-| `onboarding_backoffice` | Statut validation admin (user_id, asso_id, doubleChecked, document_justificatif) |
 | `benevoles` | Comptes bénévoles (email, password, nom, prenom, telephone, statut, association_nom, tracking_uuid, metiers_competences) |
 | `actions` | Activités bénévoles (association_nom, nom, description, ville, date_action, heure_debut/fin, recurrence, responsable_email, nb_participants, genre, age) |
 | `Benevoles_Actions` | Inscriptions (benevole_id, action_id, date_action, statut, presence, relance_email) |
-| `Actions_Masquees` | Occurrences masquées par l'admin (action_id, date_masquee, masquee_par) |
+| `Actions_Masquees` | Occurrences masquées (action_id, date_masquee, masquee_par) |
+| `Assos` | Détails associations (lecture seule, gérées par boAcdlp) |
 
-### Tables obsolètes (plus référencées dans le code)
-`Commandes`, `Quotas2`, `Menus`, `qrcode_cards`, `meal_pickups`
+### Tables gérées par le backoffice externe (boAcdlp)
+`users`, `onboarding_backoffice`
 
 ---
 
 ## Frontend - Pages et Routes
 
 ### App Routes (`app-routing.module.ts`)
-- `/` → Layout → redirige vers `/backoffice`
+- `/` → redirige vers `/benevolat/signin`
 - `/benevolat/*` → Module bénévole
-- `/backoffice-auth/*` → Auth admin
 - `/errors/*` → Pages erreur
 - `**` → 404
-
-### Backoffice (`/backoffice/`) - Guard: `BackofficeAuthGuard`
-- `/backoffice/benevolat/benevoles` — Liste bénévoles (défaut)
-- `/backoffice/benevolat/actions` — Créer une action
-- `/backoffice/benevolat/actions-list` — Liste des actions
-- `/backoffice/benevolat/calendar` — Calendrier
-- `/backoffice/benevolat/attestations` — Attestations de bénévolat
-- `/backoffice/infos` — Infos association
-- `/backoffice/parametres` — Paramètres
 
 ### Espace Bénévole (`/benevolat/`)
 - `/benevolat/` — Landing page
@@ -222,10 +177,6 @@ Toutes les routes sont préfixées par `/api`. 4 fichiers routes montés dans `s
 - `/benevolat/dashboard/actions` — Calendrier + inscription actions
 - `/benevolat/dashboard/profile` — Profil
 
-### Backoffice Auth (`/backoffice-auth/`)
-- `/backoffice-auth/sign-in` — Login admin
-- `/backoffice-auth/sign-up` — Inscription admin (SIREN + upload)
-
 ---
 
 ## Services Backend
@@ -236,7 +187,6 @@ Toutes les routes sont préfixées par `/api`. 4 fichiers routes montés dans `s
 | Mail | `mailService.js` | Envoi emails Mailjet avec templates et pièces jointes (ICS) |
 | Google Sheets | `googleSheetsService.js` | Sync roster bénévoles avec Google Sheets |
 | ICS | `icsService.js` | Génération fichiers iCalendar pour actions |
-| INSEE | `inseeService.js` | Validation SIREN/SIRET via API Sirene V3.11 |
 
 ---
 
@@ -256,9 +206,9 @@ Toutes les routes sont préfixées par `/api`. 4 fichiers routes montés dans `s
 ### SSL
 - Certificat wildcard `*.acdlp.com` monté en `./ssl:/etc/ssl/acdlp:ro`
 - TLS 1.2/1.3, ciphers AEAD modernes
-- Plus de Certbot/Let's Encrypt
 
-### Nginx Routes
+### Nginx
+- `/` → redirige vers `/app/benevolat/signin`
 - `/app/*` → Angular SPA
 - `/api/*` → Node.js (port 4242)
 - `/assets/*` → Assets statiques
@@ -269,14 +219,14 @@ Toutes les routes sont préfixées par `/api`. 4 fichiers routes montés dans `s
 ### Environnements
 - **Dev**: `environment.ts` (localhost:4242)
 - **Staging**: `environment.staging.ts` (dev.acdlp.com)
-- **Production**: `environment.prod.ts` (acdlp.com)
+- **Production**: `environment.prod.ts` (benevolat.acdlp.com)
 
 ---
 
 ## Variables Environnement
 
 ```bash
-URL_ORIGIN=https://acdlp.fr
+URL_ORIGIN=https://benevolat.acdlp.com
 LOCAL_DB_HOST=acdlp-mysql
 LOCAL_DB_USER=***
 LOCAL_DB_PASSWORD=***
@@ -288,7 +238,6 @@ GOOGLE_SHEET_ID=***
 GOOGLE_CREDENTIALS_PATH=./credentials/***
 GITHUB_CLIENT_ID=***
 GITHUB_CLIENT_SECRET=***
-SIRENE_API_KEY=***
 ```
 
 ---
@@ -319,10 +268,9 @@ SIRENE_API_KEY=***
 
 ### Debug
 1. Vérifier les logs (`/var/log/acdlp/` ou Grafana)
-2. Tester l'auth (JWT, cookies, rôles)
+2. Tester l'auth (JWT, cookies)
 3. Vérifier la DB (tables, données)
 
 ### Ajout features
 1. Analyser l'impact (DB, API, Angular)
 2. Ajouter validation (frontend + backend)
-3. Tester avec les 2 rôles (admin, bénévole)
