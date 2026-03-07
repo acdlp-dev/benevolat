@@ -111,7 +111,7 @@ export class VolunteerEmailStepComponent implements OnInit {
 
     const { email, confirmEmail } = this.emailForm.value;
 
-    this.volunteerService.requestOTP(email, confirmEmail, this.assoId)
+    this.volunteerService.requestOTP(email, confirmEmail)
       .pipe(finalize(() => { this.submitting = false; }))
       .subscribe({
         next: (response) => {

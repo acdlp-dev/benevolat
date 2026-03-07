@@ -1,9 +1,5 @@
 export interface BenevoleAction {
   id: number;
-  association_nom: string;
-  association_nom_complet?: string;
-  association_surnom?: string;
-  association_logo_url?: string;
   rue?: string;
   ville?: string;
   pays?: string;

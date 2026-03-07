@@ -23,15 +23,15 @@ export class ActionService {
   constructor(private http: HttpClient) {}
 
   /**
-   * Récupère les actions d'une association avec filtrage optionnel
+   * Récupère les actions avec filtrage optionnel
    */
-  getActions(associationName: string, filter: 'all' | 'inscribed' = 'all'): Observable<BenevoleAction[]> {
+  getActions(filter: 'all' | 'inscribed' = 'all'): Observable<BenevoleAction[]> {
     let params = new HttpParams();
     if (filter !== 'all') {
       params = params.set('filter', filter);
     }
-    
-    return this.http.get<any>(`${this.apiUrl}/actions/${associationName}`, { 
+
+    return this.http.get<any>(`${this.apiUrl}/actions`, {
       params,
       withCredentials: true 
     })

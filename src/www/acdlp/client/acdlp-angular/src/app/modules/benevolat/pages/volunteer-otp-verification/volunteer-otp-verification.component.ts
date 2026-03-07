@@ -140,7 +140,7 @@ export class VolunteerOtpVerificationComponent implements OnInit {
     this.submitError = false;
     this.submitting = true;
 
-    this.volunteerService.requestOTP(this.email, this.email, this.associationId)
+    this.volunteerService.requestOTP(this.email, this.email)
       .pipe(finalize(() => { this.submitting = false; }))
       .subscribe({
         next: (response) => {

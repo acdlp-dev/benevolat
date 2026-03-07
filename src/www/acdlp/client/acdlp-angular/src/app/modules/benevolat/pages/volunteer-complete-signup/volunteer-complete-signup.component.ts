@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ViewChild, ElementRef, NgZone } from '@angular/core';
 import {
   AbstractControl,
   FormBuilder,
@@ -16,6 +16,8 @@ import { VolunteerFormData } from '../../models/volunteer.model';
 import { VolunteerService } from '../../services/volunteer.service';
 import { finalize } from 'rxjs/operators';
 
+declare var google: any;
+
 @Component({
   selector: 'app-volunteer-complete-signup',
   standalone: true,
@@ -29,6 +31,15 @@ import { finalize } from 'rxjs/operators';
   styleUrl: './volunteer-complete-signup.component.scss',
 })
 export class VolunteerCompleteSignupComponent implements OnInit {
+  private autocompleteInitialized = false;
+
+  @ViewChild('addressInput') set addressInput(el: ElementRef | undefined) {
+    if (el && !this.autocompleteInitialized) {
+      this.autocompleteInitialized = true;
+      this.initGooglePlacesAutocomplete(el);
+    }
+  }
+
   association?: Association;
   loading = true;
   error = false;
@@ -63,7 +74,8 @@ export class VolunteerCompleteSignupComponent implements OnInit {
     private router: Router,
     private associationService: AssociationService,
     private volunteerService: VolunteerService,
-    private fb: FormBuilder
+    private fb: FormBuilder,
+    private ngZone: NgZone
   ) {
     // Récupérer les données depuis navigation state
     const navigation = this.router.getCurrentNavigation();
@@ -77,7 +89,7 @@ export class VolunteerCompleteSignupComponent implements OnInit {
       // Étape 1 : Informations personnelles (sans email car déjà vérifié)
       prenom: ['', [Validators.required, Validators.minLength(2)]],
       nom: ['', [Validators.required, Validators.minLength(2)]],
-      date_naissance: ['', [Validators.required, this.dateNaissanceValidator.bind(this)]],
+      date_naissance: ['', [Validators.required]],
       genre: ['', Validators.required],
       password: ['', [Validators.required, Validators.minLength(6)]],
       confirmPassword: ['', [Validators.required]],
@@ -179,31 +191,6 @@ export class VolunteerCompleteSignupComponent implements OnInit {
     return password.value === confirmPassword.value ? null : { passwordMismatch: true };
   }
 
-  private dateNaissanceValidator(control: AbstractControl): ValidationErrors | null {
-    if (!control.value) {
-      return null;
-    }
-
-    const birthDate = new Date(control.value);
-    const today = new Date();
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
-    
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-      age--;
-    }
-
-    if (age < 16) {
-      return { minAge: { requiredAge: 16, actualAge: age } };
-    }
-
-    if (age > 99) {
-      return { maxAge: { requiredAge: 99, actualAge: age } };
-    }
-
-    return null;
-  }
-
   private calculateAge(birthDate: string): number {
     const birth = new Date(birthDate);
     const today = new Date();
@@ -256,9 +243,6 @@ export class VolunteerCompleteSignupComponent implements OnInit {
       if (fieldName === 'telephone') return 'Format de téléphone invalide';
       if (fieldName === 'code_postal') return 'Code postal invalide (5 chiffres)';
     }
-    if (field.errors['minAge']) return `Vous devez avoir au moins ${field.errors['minAge'].requiredAge} ans`;
-    if (field.errors['maxAge']) return `Âge maximum: ${field.errors['maxAge'].requiredAge} ans`;
-
     return 'Champ invalide';
   }
 
@@ -342,10 +326,45 @@ export class VolunteerCompleteSignupComponent implements OnInit {
     });
   }
 
-  getMaxBirthDate(): string {
-    const today = new Date();
-    const maxDate = new Date(today.getFullYear() - 16, today.getMonth(), today.getDate());
-    return maxDate.toISOString().split('T')[0];
+  private initGooglePlacesAutocomplete(el: ElementRef): void {
+    if (typeof google === 'undefined') return;
+
+    const autocomplete = new google.maps.places.Autocomplete(
+      el.nativeElement,
+      { fields: ['address_components', 'formatted_address'], types: ['address'] }
+    );
+
+    autocomplete.addListener('place_changed', () => {
+      this.ngZone.run(() => {
+        const place = autocomplete.getPlace();
+        if (!place?.address_components) return;
+
+        let streetNumber = '';
+        let street = '';
+        let city = '';
+        let postalCode = '';
+        let country = '';
+
+        for (const component of place.address_components) {
+          const type = component.types[0];
+          switch (type) {
+            case 'street_number': streetNumber = component.long_name; break;
+            case 'route': street = component.long_name; break;
+            case 'locality': city = component.long_name; break;
+            case 'postal_code': postalCode = component.long_name; break;
+            case 'country': country = component.long_name; break;
+          }
+        }
+
+        const addressLine = streetNumber && street ? `${streetNumber} ${street}` : street;
+        this.volunteerForm.patchValue({
+          adresse: place.formatted_address || addressLine,
+          code_postal: postalCode,
+          ville: city,
+          pays: country || 'France',
+        });
+      });
+    });
   }
 
   showSourceAutreField(): boolean {

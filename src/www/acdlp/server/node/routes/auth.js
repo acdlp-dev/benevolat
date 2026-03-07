@@ -76,7 +76,7 @@ router.post('/logout', (req, res) => {
 
 // Étape 1 : Demande de code OTP pour inscription bénévolat
 router.post('/request-otp', async(req, res) => {
-    const { email, confirmEmail, associationName } = req.body;
+    const { email, confirmEmail } = req.body;
     console.log("Demande OTP bénévolat reçue pour " + email);
 
     // Validation
@@ -92,7 +92,7 @@ router.post('/request-otp', async(req, res) => {
 
     try {
         // Vérifier si l'email existe déjà
-        const existingVolunteer = await db.select('SELECT * FROM benevoles WHERE email = ?', [email]);
+        const existingVolunteer = await db.select('SELECT * FROM benevoles_users WHERE email = ?', [email]);
 
         // 🔒 PROTECTION CONTRE L'ENUMERATION D'UTILISATEURS
         // On renvoie TOUJOURS le même message de succès, que le compte existe ou non
@@ -114,44 +114,26 @@ router.post('/request-otp', async(req, res) => {
                     const resetToken = generateResetToken();
                     const tokenExpiry = Date.now() + 3600000; // 1 heure
 
-                    await db.update('benevoles', {
+                    await db.update('benevoles_users', {
                         reset_token: resetToken,
                         reset_token_expiry: tokenExpiry
                     }, 'email = ?', [email]);
 
-                    // Récupérer les infos de l'association pour le logo
-                    let logoUrl = '';
-                    let nomAsso = '';
-                    if (associationName) {
-                        try {
-                            const assoQuery = 'SELECT nom, logoUrl FROM Assos WHERE uri = ?';
-                            const assoResults = await db.select(assoQuery, [associationName], 'remote');
-                            if (assoResults && assoResults.length > 0) {
-                                if (assoResults[0].logoUrl) {
-                                    logoUrl = `https://acdlp.com/${assoResults[0].logoUrl}`;
-                                }
-                                nomAsso = assoResults[0].nom;
-                            }
-                        } catch (assoErr) {
-                            console.warn(`[BENEVOLAT ACCOUNT EXISTS] Impossible de récupérer le logo:`, assoErr);
-                        }
-                    }
-
                     const resetUrl = `${urlOrigin}/app/new-password/token/${resetToken}`;
 
                     // Template ID pour "compte existant détecté"
-                    const templateId = 7472537; // Template personnalisé pour tentative d'inscription sur compte existant
+                    const templateId = 7796174;
                     const variables = {
                         prenom: volunteer.prenom || 'Bénévole',
                         lien_reinit_password: resetUrl,
-                        logo_url: logoUrl
+                        logo_url: ''
                     };
 
                     await sendTemplateEmail(
                         email,
                         templateId,
                         variables,
-                        `${nomAsso} : Votre compte existe déjà`
+                        'Espace Bénévole : Votre compte existe déjà'
                     );
 
                     console.log(`📧 [BENEVOLAT ACCOUNT EXISTS] Email informatif envoyé à: ${email}`);
@@ -177,16 +159,15 @@ router.post('/request-otp', async(req, res) => {
             // INSERT ou UPDATE en base
             if (existingVolunteer.length > 0) {
                 // UPDATE
-                await db.update('benevoles', {
+                await db.update('benevoles_users', {
                     verification_code: otp,
                     verification_code_expiry: otpExpiry,
                     updated_at: new Date()
                 }, 'email = ?', [email]);
             } else {
                 // INSERT minimal
-                await db.insert('benevoles', {
+                await db.insert('benevoles_users', {
                     email: email,
-                    association_nom: associationName || '',
                     verification_code: otp,
                     verification_code_expiry: otpExpiry,
                     tracking_uuid: trackingId,
@@ -196,36 +177,19 @@ router.post('/request-otp', async(req, res) => {
             }
 
             if (shouldSendOTP) {
-                // Récupérer le logo de l'association
-                let logoUrl = '';
-                let nomAsso = '';
-
-                if (associationName) {
-                    try {
-                        const assoQuery = 'SELECT nom, logoUrl FROM Assos WHERE uri = ?';
-                        const assoResults = await db.select(assoQuery, [associationName], 'remote');
-                        if (assoResults && assoResults.length > 0 && assoResults[0].logoUrl) {
-                            logoUrl = `https://acdlp.com/${assoResults[0].logoUrl}`;
-                            nomAsso = assoResults[0].nom;
-                        }
-                    } catch (assoErr) {
-                        console.warn(`[BENEVOLAT OTP] Impossible de récupérer le logo de l'association:`, assoErr);
-                    }
-                }
-
                 // Envoyer l'email avec le code OTP
                 try {
-                    const templateId = 7367008;
+                    const templateId = 7726875;
                     const variables = {
                         code_verification: otp,
-                        logo_url: logoUrl
+                        logo_url: ''
                     };
 
                     await sendTemplateEmail(
                         email,
                         templateId,
                         variables,
-                        `${nomAsso} : Votre code de vérification`
+                        'Espace Bénévole : Votre code de vérification'
                     );
 
                     console.log(`✅ [BENEVOLAT OTP] Email OTP envoyé à: ${email}`);
@@ -264,7 +228,7 @@ router.post('/verify-otp', async(req, res) => {
     try {
         // Récupérer le bénévole
         const volunteer = await db.select(
-            'SELECT * FROM benevoles WHERE email = ? AND verification_code = ? AND verification_code_expiry > ?', [email, code, Date.now()]
+            'SELECT * FROM benevoles_users WHERE email = ? AND verification_code = ? AND verification_code_expiry > ?', [email, code, Date.now()]
         );
 
         if (volunteer.length === 0) {
@@ -280,7 +244,7 @@ router.post('/verify-otp', async(req, res) => {
 
         // Marquer comme vérifié et stocker le token de continuation
         await db.update(
-            'benevoles', {
+            'benevoles_users', {
                 is_verified: 1,
                 verified_at: new Date(),
                 verification_code: null,
@@ -337,7 +301,7 @@ router.post('/complete-signup', async(req, res) => {
     try {
         // Vérifier le token et récupérer le bénévole
         const volunteer = await db.select(
-            'SELECT * FROM benevoles WHERE completion_token = ? AND completion_token_expiry > ?', [token, Date.now()]
+            'SELECT * FROM benevoles_users WHERE completion_token = ? AND completion_token_expiry > ?', [token, Date.now()]
         );
 
         if (volunteer.length === 0) {
@@ -388,7 +352,7 @@ router.post('/complete-signup', async(req, res) => {
         const hashedPassword = await bcrypt.hash(password, 10);
 
         // UPDATE du bénévole avec toutes les informations
-        await db.update('benevoles', {
+        await db.update('benevoles_users', {
             password: hashedPassword,
             nom: lastName,
             prenom: firstName,
@@ -412,34 +376,18 @@ router.post('/complete-signup', async(req, res) => {
 
         console.log(`✅ [BENEVOLAT COMPLETE] Profil complété pour: ${email}`);
 
-        // Récupérer le logo de l'association
-        let logoUrl = '';
-        let nomAsso = '';
-        if (volunteerData.association_nom) {
-            try {
-                const assoQuery = 'SELECT nom, logoUrl FROM Assos WHERE uri = ?';
-                const assoResults = await db.select(assoQuery, [volunteerData.association_nom], 'remote');
-                if (assoResults && assoResults.length > 0 && assoResults[0].logoUrl) {
-                    logoUrl = `https://acdlp.com/${assoResults[0].logoUrl}`;
-                    nomAsso = assoResults[0].nom;
-                }
-            } catch (assoErr) {
-                console.warn(`[BENEVOLAT COMPLETE] Impossible de récupérer le logo de l'association:`, assoErr);
-            }
-        }
-
         // Envoyer l'email de bienvenue
         try {
-            const templateId = 7368057; // Template de bienvenue
+            const templateId = 7726868;
             const variables = {
-                logo_url: logoUrl
+                logo_url: ''
             };
 
             await sendTemplateEmail(
                 email,
                 templateId,
                 variables,
-                `${nomAsso} : Bienvenue dans l'équipe bénévole !`
+                'Espace Bénévole : Bienvenue dans l\'équipe bénévole !'
             );
 
             console.log(`📧 [BENEVOLAT COMPLETE] Email de bienvenue envoyé à: ${email}`);
@@ -472,7 +420,7 @@ router.post('/signin', async(req, res) => {
     }
 
     try {
-        const results = await db.select('SELECT * FROM benevoles WHERE email = ?', [email]);
+        const results = await db.select('SELECT * FROM benevoles_users WHERE email = ?', [email]);
         if (results.length === 0) {
             return res.status(401).json({ message: 'Identifiants invalides.' });
         }
@@ -493,8 +441,7 @@ router.post('/signin', async(req, res) => {
                 email: volunteer.email,
                 firstName: volunteer.prenom,
                 lastName: volunteer.nom,
-                role: 'volunteer',
-                associationName: volunteer.association_nom
+                role: 'volunteer'
             },
             JWT_SECRET, { expiresIn: '1h' }
         );
@@ -525,7 +472,7 @@ router.post('/request-password-reset', async (req, res) => {
     }
 
     try {
-        const results = await db.select('SELECT * FROM benevoles WHERE email = ?', [email]);
+        const results = await db.select('SELECT * FROM benevoles_users WHERE email = ?', [email]);
 
         if (results.length === 0) {
             // 🔒 PROTECTION CONTRE L'ENUMERATION D'UTILISATEURS
@@ -534,7 +481,7 @@ router.post('/request-password-reset', async (req, res) => {
 
             const signupUrl = `${urlOrigin}/app/signup`;
 
-            await sendTemplateEmail(email, 7614867, {
+            await sendTemplateEmail(email, 7726847, {
                 lien_creation_compte: signupUrl
             }, 'Espace Bénévole : Création de compte');
 
@@ -548,25 +495,7 @@ router.post('/request-password-reset', async (req, res) => {
         const resetToken = generateResetToken();
         const tokenExpiry = Date.now() + 3600000; // 1 heure
 
-        await db.update('benevoles', { reset_token: resetToken, reset_token_expiry: tokenExpiry }, 'email = ?', [email]);
-
-        // Récupérer les informations de contact bénévolat de l'association
-        let replyToConfig = null;
-        if (volunteer.association_nom) {
-            try {
-                const assoQuery = 'SELECT nom, benevoles_resp_email FROM Assos WHERE uri = ?';
-                const assoResults = await db.select(assoQuery, [volunteer.association_nom], 'remote');
-                if (assoResults && assoResults.length > 0 && assoResults[0].benevoles_resp_email) {
-                    replyToConfig = {
-                        email: assoResults[0].benevoles_resp_email,
-                        name: assoResults[0].nom
-                    };
-                    console.log(`[BENEVOLAT PASSWORD RESET] Reply-to configuré : ${assoResults[0].nom} <${assoResults[0].benevoles_resp_email}>`);
-                }
-            } catch (assoErr) {
-                console.warn(`[BENEVOLAT PASSWORD RESET] Impossible de récupérer l'email de contact:`, assoErr);
-            }
-        }
+        await db.update('benevoles_users', { reset_token: resetToken, reset_token_expiry: tokenExpiry }, 'email = ?', [email]);
 
         const resetUrl = `${urlOrigin}/app/new-password/token/${resetToken}`;
 
@@ -576,18 +505,17 @@ router.post('/request-password-reset', async (req, res) => {
         console.log(`   Token: ${resetToken}`);
         console.log(`   Expire le: ${new Date(tokenExpiry)}`);
 
-        const templateId = 5536948; // Template Mailjet pour réinitialisation
-        const variables = { 
-            prenom: volunteer.prenom, 
-            lien_reinit_password: resetUrl 
+        const templateId = 7796176;
+        const variables = {
+            prenom: volunteer.prenom,
+            lien_reinit_password: resetUrl
         };
 
         await sendTemplateEmail(
-            email, 
-            templateId, 
-            variables, 
-            'Espace Bénévole : Réinitialisez votre mot de passe',
-            replyToConfig
+            email,
+            templateId,
+            variables,
+            'Espace Bénévole : Réinitialisez votre mot de passe'
         );
 
         console.log(`✅ [BENEVOLAT PASSWORD RESET] Email de réinitialisation envoyé à: ${email}`);
@@ -610,7 +538,7 @@ router.post('/request-password-reset-current-user', authMiddleware, async (req, 
         const userEmail = req.user.email;
         console.log(`👤 [BENEVOLAT PASSWORD RESET] Email de l'utilisateur connecté: ${userEmail}`);
 
-        const results = await db.select('SELECT * FROM benevoles WHERE email = ?', [userEmail]);
+        const results = await db.select('SELECT * FROM benevoles_users WHERE email = ?', [userEmail]);
         if (results.length === 0) {
             console.log(`❌ [BENEVOLAT PASSWORD RESET] Email non trouvé: ${userEmail}`);
             return res.status(404).json({ message: 'Email non trouvé.' });
@@ -620,25 +548,7 @@ router.post('/request-password-reset-current-user', authMiddleware, async (req, 
         const resetToken = generateResetToken();
         const tokenExpiry = Date.now() + 3600000; // 1 heure
 
-        await db.update('benevoles', { reset_token: resetToken, reset_token_expiry: tokenExpiry }, 'email = ?', [userEmail]);
-
-        // Récupérer les informations de contact bénévolat de l'association
-        let replyToConfig = null;
-        if (volunteer.association_nom) {
-            try {
-                const assoQuery = 'SELECT nom, benevoles_resp_email FROM Assos WHERE uri = ?';
-                const assoResults = await db.select(assoQuery, [volunteer.association_nom], 'remote');
-                if (assoResults && assoResults.length > 0 && assoResults[0].benevoles_resp_email) {
-                    replyToConfig = {
-                        email: assoResults[0].benevoles_resp_email,
-                        name: assoResults[0].nom
-                    };
-                    console.log(`[BENEVOLAT PASSWORD RESET] Reply-to configuré : ${assoResults[0].nom} <${assoResults[0].benevoles_resp_email}>`);
-                }
-            } catch (assoErr) {
-                console.warn(`[BENEVOLAT PASSWORD RESET] Impossible de récupérer l'email de contact:`, assoErr);
-            }
-        }
+        await db.update('benevoles_users', { reset_token: resetToken, reset_token_expiry: tokenExpiry }, 'email = ?', [userEmail]);
 
         const resetUrl = `${urlOrigin}/app/new-password/token/${resetToken}`;
 
@@ -648,18 +558,17 @@ router.post('/request-password-reset-current-user', authMiddleware, async (req, 
         console.log(`   Token: ${resetToken}`);
         console.log(`   Expire le: ${new Date(tokenExpiry)}`);
 
-        const templateId = 5536948; // Template Mailjet pour réinitialisation
-        const variables = { 
-            prenom: volunteer.prenom, 
-            lien_reinit_password: resetUrl 
+        const templateId = 7796176;
+        const variables = {
+            prenom: volunteer.prenom,
+            lien_reinit_password: resetUrl
         };
 
         await sendTemplateEmail(
-            userEmail, 
-            templateId, 
-            variables, 
-            'Espace Bénévole : Réinitialisez votre mot de passe',
-            replyToConfig
+            userEmail,
+            templateId,
+            variables,
+            'Espace Bénévole : Réinitialisez votre mot de passe'
         );
 
         console.log(`✅ [BENEVOLAT PASSWORD RESET] Email de réinitialisation envoyé à: ${userEmail}`);
@@ -691,7 +600,7 @@ router.post('/reset-password', async (req, res) => {
 
     try {
         const volunteer = await db.select(
-            'SELECT * FROM benevoles WHERE reset_token = ? AND reset_token_expiry > ?', 
+            'SELECT * FROM benevoles_users WHERE reset_token = ? AND reset_token_expiry > ?', 
             [token, Date.now()]
         );
 
@@ -702,7 +611,7 @@ router.post('/reset-password', async (req, res) => {
 
         const hashedPassword = await bcrypt.hash(newPassword, 10);
         await db.update(
-            'benevoles', 
+            'benevoles_users', 
             { password: hashedPassword, reset_token: null, reset_token_expiry: null },
             'id = ?', 
             [volunteer[0].id]
@@ -722,7 +631,7 @@ router.get('/verify-email/:token', async(req, res) => {
 
     try {
         const volunteer = await db.select(
-            'SELECT * FROM benevoles WHERE verification_token = ? AND verification_token_expiry > ?', [token, Date.now()]
+            'SELECT * FROM benevoles_users WHERE verification_token = ? AND verification_token_expiry > ?', [token, Date.now()]
         );
 
         if (volunteer.length === 0) {
@@ -750,7 +659,7 @@ router.get('/verify-email/:token', async(req, res) => {
 
         // Marquer comme vérifié
         await db.update(
-            'benevoles', {
+            'benevoles_users', {
                 is_verified: 1,
                 verified_at: new Date(),
                 verification_token: null,
@@ -761,35 +670,11 @@ router.get('/verify-email/:token', async(req, res) => {
 
         console.log(`✅ [BENEVOLAT VERIFICATION] Email vérifié avec succès pour: ${volunteerData.email}`);
 
-        // Récupérer le nom réel de l'association depuis la table Assos
-        let associationDisplayName = volunteerData.association_nom;
-        let logoUrl = '';
-
-        if (volunteerData.association_nom) {
-            try {
-                const assoQuery = 'SELECT nom, logoUrl FROM Assos WHERE uri = ?';
-                const assoResults = await db.select(assoQuery, [volunteerData.association_nom], 'remote');
-                if (assoResults && assoResults.length > 0) {
-                    // Utiliser le nom de l'association depuis la table Assos
-                    associationDisplayName = assoResults[0].nom || volunteerData.association_nom;
-
-                    // Récupérer le logo
-                    if (assoResults[0].logoUrl) {
-                        logoUrl = `https://acdlp.com/${assoResults[0].logoUrl}`;
-                    }
-                }
-            } catch (assoErr) {
-                console.warn(`[BENEVOLAT WELCOME] Impossible de récupérer le logo de l'association:`, assoErr);
-            }
-        }
-
         // Envoyer un email de bienvenue avec les instructions de connexion
         try {
-
-            // Envoyer l'email de bienvenue
-            const templateId = 7368057; // Template de bienvenue
+            const templateId = 7726868;
             const variables = {
-                logo_url: logoUrl
+                logo_url: ''
             };
 
             await sendTemplateEmail(
@@ -810,8 +695,7 @@ router.get('/verify-email/:token', async(req, res) => {
             volunteer: {
                 prenom: volunteerData.prenom,
                 nom: volunteerData.nom,
-                email: volunteerData.email,
-                association_nom: associationDisplayName
+                email: volunteerData.email
             }
         });
     } catch (err) {

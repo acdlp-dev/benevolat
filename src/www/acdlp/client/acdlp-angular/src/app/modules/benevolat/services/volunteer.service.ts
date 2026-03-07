@@ -115,15 +115,13 @@ export class VolunteerService {
    * Demande un code OTP pour vérifier l'email
    * @param email L'email du bénévole
    * @param confirmEmail La confirmation de l'email
-   * @param associationName Le nom de l'association
    * @returns Un observable contenant la réponse du serveur
    */
-  requestOTP(email: string, confirmEmail: string, associationName: string): Observable<{ message: string; expiresIn: number }> {
+  requestOTP(email: string, confirmEmail: string): Observable<{ message: string; expiresIn: number }> {
     console.log('🔑 [volunteer.service] Demande OTP pour:', email);
     return this.http.post<{ message: string; expiresIn: number }>(`${this.apiUrl}/request-otp`, {
       email,
-      confirmEmail,
-      associationName
+      confirmEmail
     }).pipe(
       tap(response => {
         console.log('✅ [volunteer.service] OTP demandé:', response);

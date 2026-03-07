@@ -10,18 +10,17 @@ const { authMiddleware } = require('./auth');
 
 
 /**
- * GET /api/actions/:associationName
- * Récupère les actions d'une association pour le calendrier bénévole
+ * GET /api/actions
+ * Récupère les actions pour le calendrier bénévole
  * Supporte le filtrage par profil bénévole et inscriptions
  */
-router.get('/actions/:associationName', authMiddleware, async (req, res) => {
+router.get('/actions', authMiddleware, async (req, res) => {
     try {
-        const { associationName } = req.params;
         const { filter = 'all' } = req.query; // 'all' ou 'inscribed'
         const benevoleId = req.user.id;
 
         // Récupérer le profil du bénévole pour le filtrage
-        const benevoleQuery = 'SELECT genre, age FROM benevoles WHERE id = ?';
+        const benevoleQuery = 'SELECT genre, age FROM benevoles_users WHERE id = ?';
         const benevoles = await db.select(benevoleQuery, [benevoleId]);
 
         if (!benevoles || benevoles.length === 0) {
@@ -39,7 +38,6 @@ router.get('/actions/:associationName', authMiddleware, async (req, res) => {
         let actionsQuery = `
             SELECT
                 a.id,
-                a.association_nom,
                 a.rue,
                 a.ville,
                 a.pays,
@@ -58,11 +56,11 @@ router.get('/actions/:associationName', authMiddleware, async (req, res) => {
                 a.age,
                 a.created_at
             FROM actions a
-            LEFT JOIN benevoles resp ON a.responsable_email = resp.email
-            WHERE a.association_nom = ?
+            LEFT JOIN benevoles_users resp ON a.responsable_email = resp.email
+            WHERE 1=1
         `;
 
-        let params = [associationName];
+        let params = [];
 
         // Filtrage par profil bénévole (genre et âge)
         actionsQuery += ` AND (a.genre = 'mixte' OR a.genre = ?)`;
@@ -82,19 +80,16 @@ router.get('/actions/:associationName', authMiddleware, async (req, res) => {
         const maskedActionsQuery = `
             SELECT action_id, date_masquee
             FROM Actions_Masquees
-            WHERE association_nom = ?
         `;
-        const maskedActions = await db.select(maskedActionsQuery, [associationName], 'remote');
+        const maskedActions = await db.select(maskedActionsQuery, [], 'remote');
 
-        // 1.5. Récupérer le nombre total de participants pour chaque action de cette association
+        // 1.5. Récupérer le nombre total de participants pour chaque action
         const participantsCountQuery = `
             SELECT ba.action_id, ba.date_action, COUNT(*) as nb_inscrits
             FROM Benevoles_Actions ba
-            JOIN actions a ON ba.action_id = a.id
-            WHERE a.association_nom = ?
             GROUP BY ba.action_id, ba.date_action
         `;
-        const participantsCounts = await db.select(participantsCountQuery, [associationName]);
+        const participantsCounts = await db.select(participantsCountQuery, []);
         console.log(`[DEBUG] Participants counts récupérés: ${participantsCounts ? participantsCounts.length : 0}`);
 
         // Créer une map pour un accès rapide : key = "action_id_date_action", value = nb_inscrits
@@ -107,55 +102,7 @@ router.get('/actions/:associationName', authMiddleware, async (req, res) => {
                     : count.date_action;
                 const key = `${count.action_id}_${dateStr}`;
                 participantsMap.set(key, count.nb_inscrits);
-                console.log(`[DEBUG] Compteur ajouté: ${key} = ${count.nb_inscrits}`);
             });
-        }
-
-        // 2. Récupérer les infos de l'association depuis la base REMOTE
-        let associationInfo = null;
-        if (actions && actions.length > 0) {
-            console.log(`[DEBUG] Recherche association pour: ${associationName}`);
-            const assoQuery = `
-                SELECT surnom, nom, logoUrl
-                FROM Assos
-                WHERE uri = ?
-            `;
-            const assoResults = await db.select(assoQuery, [associationName], 'remote');
-            console.log(`[DEBUG] Résultats Assos:`, assoResults);
-
-            if (assoResults && assoResults.length > 0) {
-                associationInfo = assoResults[0];
-                console.log(`[DEBUG] Association trouvée:`, {
-                    surnom: associationInfo.surnom,
-                    nom: associationInfo.nom,
-                    logoUrl: associationInfo.logoUrl
-                });
-            } else {
-                console.log(`[DEBUG] Aucune association trouvée pour surnom: ${associationName}`);
-            }
-        }
-
-        // 3. Enrichir les actions avec les infos de l'association
-        if (associationInfo) {
-            console.log(`[DEBUG] Enrichissement des actions avec:`, {
-                logo_url: associationInfo.logoUrl,
-                nom_complet: associationInfo.nom,
-                surnom: associationInfo.surnom
-            });
-            actions = actions.map(action => ({
-                ...action,
-                association_logo_url: associationInfo.logoUrl,
-                association_nom_complet: associationInfo.nom,
-                association_surnom: associationInfo.surnom
-            }));
-            console.log(`[DEBUG] Premier action enrichie:`, {
-                id: actions[0].id,
-                nom: actions[0].nom,
-                association_logo_url: actions[0].association_logo_url,
-                association_nom_complet: actions[0].association_nom_complet
-            });
-        } else {
-            console.log(`[DEBUG] Pas d'enrichissement - associationInfo est null`);
         }
 
         // Si on ne veut que les actions inscrites, on les filtre après récupération des inscriptions
@@ -178,14 +125,13 @@ router.get('/actions/:associationName', authMiddleware, async (req, res) => {
             // en fonction des dates calculées des instances récurrentes
         }
 
-        // Récupérer toutes les inscriptions du bénévole pour cette association
+        // Récupérer toutes les inscriptions du bénévole
         const inscriptionsQuery = `
             SELECT ba.id as inscription_id, ba.action_id, ba.date_action
             FROM Benevoles_Actions ba
-            JOIN actions a ON ba.action_id = a.id
-            WHERE ba.benevole_id = ? AND a.association_nom = ?
+            WHERE ba.benevole_id = ?
         `;
-        const inscriptions = await db.select(inscriptionsQuery, [benevoleId, associationName]);
+        const inscriptions = await db.select(inscriptionsQuery, [benevoleId]);
 
         // Créer une map pour les actions masquées
         const maskedMap = new Map();
@@ -313,34 +259,21 @@ router.post('/inscription', authMiddleware, async (req, res) => {
             console.log(`[BENEVOLAT INSCRIPTION] Envoi des notifications email pour l'inscription ${result.insertId}`);
 
             // 1. Récupérer les informations du bénévole inscrit
-            const benevoleQuery = 'SELECT nom, prenom, email, telephone FROM benevoles WHERE id = ?';
+            const benevoleQuery = 'SELECT nom, prenom, email, telephone FROM benevoles_users WHERE id = ?';
             const benevoleResults = await db.select(benevoleQuery, [benevole_id]);
 
             if (benevoleResults && benevoleResults.length > 0) {
                 const benevole = benevoleResults[0];
 
                 // 2. Récupérer les informations du responsable depuis la table benevoles
-                const responsableQuery = 'SELECT nom, prenom, telephone FROM benevoles WHERE email = ?';
+                const responsableQuery = 'SELECT nom, prenom, telephone FROM benevoles_users WHERE email = ?';
                 const responsableResults = await db.select(responsableQuery, [action.responsable_email]);
 
                 const responsable = responsableResults && responsableResults.length > 0
                     ? responsableResults[0]
                     : { nom: '', prenom: '', telephone: '' };
 
-                // 3. Récupérer le logo de l'association
                 let logoUrl = '';
-                if (action.association_nom) {
-                    try {
-                        const assoQuery = 'SELECT nom, logoUrl FROM Assos WHERE uri = ?';
-                        const assoResults = await db.select(assoQuery, [action.association_nom], 'remote');
-                        if (assoResults && assoResults.length > 0 && assoResults[0].logoUrl) {
-                            // Préfixer le logo avec l'URL de base
-                            logoUrl = `https://acdlp.com/${assoResults[0].logoUrl}`;
-                        }
-                    } catch (assoErr) {
-                        console.warn(`[BENEVOLAT INSCRIPTION] Impossible de récupérer le logo de l'association:`, assoErr);
-                    }
-                }
 
                 // 4. Formater la date et les horaires
                 const dateFormatted = new Date(date_action).toLocaleDateString('fr-FR', {
@@ -370,7 +303,7 @@ router.post('/inscription', authMiddleware, async (req, res) => {
 
                 // 5a. Envoyer l'email au responsable
                 try {
-                    const responsableTemplateId = 7450635;
+                    const responsableTemplateId = 7796178;
                     const responsableVariables = {
                         ...commonVariables,
                         responsable_prenom: responsable.prenom || 'Responsable',
@@ -394,23 +327,13 @@ router.post('/inscription', authMiddleware, async (req, res) => {
 
                 // 5b. Envoyer l'email de confirmation au bénévole avec fichier ICS
                 try {
-                    const benevoleTemplateId = 7450641;
+                    const benevoleTemplateId = 7796179;
                     const benevoleVariables = {
                         ...commonVariables,
                         benevole_prenom: benevole.prenom
                     };
 
-                    // Récupérer le nom complet de l'association pour le fichier ICS
-                    let associationNomComplet = action.association_nom;
-                    try {
-                        const assoQuery = 'SELECT nom FROM Assos WHERE uri = ?';
-                        const assoResults = await db.select(assoQuery, [action.association_nom], 'remote');
-                        if (assoResults && assoResults.length > 0 && assoResults[0].nom) {
-                            associationNomComplet = assoResults[0].nom;
-                        }
-                    } catch (assoErr) {
-                        console.warn(`[BENEVOLAT INSCRIPTION] Impossible de récupérer le nom complet de l'association:`, assoErr);
-                    }
+                    const associationNomComplet = 'Au Coeur de la Précarité';
 
                     // Construire le nom complet du responsable
                     const responsableNomComplet = responsable.prenom && responsable.nom
@@ -502,7 +425,7 @@ router.get('/actions/:actionId/participants', authMiddleware, async (req, res) =
     }
 
     // Vérifier que l'utilisateur connecté est de type "responsable"
-    const benevoleQuery = 'SELECT type FROM benevoles WHERE id = ?';
+    const benevoleQuery = 'SELECT type FROM benevoles_users WHERE id = ?';
     const benevoles = await db.select(benevoleQuery, [userId]);
 
     if (!benevoles || benevoles.length === 0) {
@@ -533,7 +456,7 @@ router.get('/actions/:actionId/participants', authMiddleware, async (req, res) =
         b.email,
         b.telephone
       FROM Benevoles_Actions ba
-      JOIN benevoles b ON ba.benevole_id = b.id
+      JOIN benevoles_users b ON ba.benevole_id = b.id
       WHERE ba.action_id = ?
     `;
 
@@ -599,7 +522,7 @@ router.patch('/actions/participants/:inscriptionId/statut', authMiddleware, asyn
     }
 
     // Vérifier que l'utilisateur connecté est un bénévole de type responsable
-    const userTypeQuery = 'SELECT type FROM benevoles WHERE email = ?';
+    const userTypeQuery = 'SELECT type FROM benevoles_users WHERE email = ?';
     const userTypes = await db.select(userTypeQuery, [userEmail]);
 
     if (!userTypes || userTypes.length === 0 || userTypes[0].type !== 'responsable') {
@@ -627,7 +550,7 @@ router.patch('/actions/participants/:inscriptionId/statut', authMiddleware, asyn
         const getBenevoleQuery = `
           SELECT ba.benevole_id, b.statut as benevole_statut, b.email as benevole_email
           FROM Benevoles_Actions ba
-          JOIN benevoles b ON ba.benevole_id = b.id
+          JOIN benevoles_users b ON ba.benevole_id = b.id
           WHERE ba.id = ?
         `;
         const inscriptionData = await db.select(getBenevoleQuery, [inscriptionId]);
@@ -641,7 +564,7 @@ router.patch('/actions/participants/:inscriptionId/statut', authMiddleware, asyn
           if (currentStatut !== 'confirmé') {
             // 3. Mettre à jour le statut à "confirmé"
             await db.update(
-              'benevoles',
+              'benevoles_users',
               { statut: 'confirmé' },
               'id = ?',
               [benevoleId],
@@ -655,7 +578,7 @@ router.patch('/actions/participants/:inscriptionId/statut', authMiddleware, asyn
               console.log('[Déblocage Auto] Déclenchement de la synchronisation Google Sheets');
 
               // Récupérer tous les bénévoles
-              const syncQuery = 'SELECT nom, prenom, genre, telephone, statut FROM benevoles ORDER BY nom, prenom';
+              const syncQuery = 'SELECT nom, prenom, genre, telephone, statut FROM benevoles_users ORDER BY nom, prenom';
               const allBenevoles = await db.select(syncQuery, [], 'remote');
 
               // Synchroniser de manière asynchrone (ne pas bloquer la réponse)
@@ -703,7 +626,7 @@ router.get('/stats', authMiddleware, async (req, res) => {
     const benevoleId = req.user.id;
 
     // Récupérer les infos du bénévole
-    const benevoleQuery = 'SELECT nom, prenom, statut, genre, type FROM benevoles WHERE id = ?';
+    const benevoleQuery = 'SELECT nom, prenom, statut, genre, type FROM benevoles_users WHERE id = ?';
     const benevoles = await db.select(benevoleQuery, [benevoleId]);
 
     if (!benevoles || benevoles.length === 0) {
@@ -760,7 +683,7 @@ router.get('/profile', authMiddleware, async (req, res) => {
     // Récupérer les informations du bénévole
     const query = `
       SELECT nom, prenom, adresse, ville, code_postal, pays, telephone, vehicule
-      FROM benevoles
+      FROM benevoles_users
       WHERE id = ?
     `;
 
@@ -813,7 +736,7 @@ router.patch('/profile', authMiddleware, async (req, res) => {
     console.log(`[UPDATE PROFILE] Mise à jour du profil pour benevole_id: ${benevoleId}`);
 
     // Vérifier que le bénévole existe
-    const checkQuery = 'SELECT id FROM benevoles WHERE id = ?';
+    const checkQuery = 'SELECT id FROM benevoles_users WHERE id = ?';
     const existing = await db.select(checkQuery, [benevoleId]);
 
     if (!existing || existing.length === 0) {
@@ -852,7 +775,7 @@ router.patch('/profile', authMiddleware, async (req, res) => {
 
     // Mettre à jour le profil
     await db.update(
-      'benevoles',
+      'benevoles_users',
       updateData,
       'id = ?',
       [benevoleId],
@@ -883,13 +806,11 @@ router.delete('/desinscription/:inscriptionId/future-occurrences', authMiddlewar
     try {
         const { inscriptionId } = req.params;
         const currentUserId = req.user.id;
-        const userAssociationNom = req.user.uri;
 
         // Récupérer l'inscription et l'action
         const checkQuery = `
             SELECT ba.*,
                    a.nom as action_nom,
-                   a.association_nom,
                    a.recurrence,
                    a.rue, a.ville, a.pays,
                    a.heure_debut, a.heure_fin,
@@ -910,11 +831,8 @@ router.delete('/desinscription/:inscriptionId/future-occurrences', authMiddlewar
 
         const inscription = inscriptions[0];
 
-        // Vérifier les permissions
-        const isOwnInscription = inscription.benevole_id === currentUserId;
-        const isAssociationAdmin = inscription.association_nom === userAssociationNom;
-
-        if (!isOwnInscription && !isAssociationAdmin) {
+        // Vérifier que c'est bien l'inscription du bénévole connecté
+        if (inscription.benevole_id !== currentUserId) {
             return res.status(403).json({
                 success: false,
                 message: 'Vous n\'avez pas les permissions pour désinscrire ce bénévole'
@@ -957,7 +875,7 @@ router.delete('/desinscription/:inscriptionId/future-occurrences', authMiddlewar
         const dateFin = futureInscriptions[count - 1].date_action;
 
         // Récupérer les informations du bénévole pour l'email
-        const benevoleQuery = 'SELECT nom, prenom, email, telephone FROM benevoles WHERE id = ?';
+        const benevoleQuery = 'SELECT nom, prenom, email, telephone FROM benevoles_users WHERE id = ?';
         const benevoleResults = await db.select(benevoleQuery, [inscription.benevole_id]);
 
         // Supprimer toutes les inscriptions futures
@@ -979,19 +897,7 @@ router.delete('/desinscription/:inscriptionId/future-occurrences', authMiddlewar
             try {
                 const benevole = benevoleResults[0];
 
-                // Récupérer le logo de l'association
                 let logoUrl = '';
-                if (inscription.association_nom) {
-                    try {
-                        const assoQuery = 'SELECT logoUrl FROM Assos WHERE uri = ?';
-                        const assoResults = await db.select(assoQuery, [inscription.association_nom], 'remote');
-                        if (assoResults && assoResults.length > 0 && assoResults[0].logoUrl) {
-                            logoUrl = `https://acdlp.com/${assoResults[0].logoUrl}`;
-                        }
-                    } catch (assoErr) {
-                        console.warn(`[BENEVOLAT DESINSCRIPTION GROUPEE] Logo introuvable:`, assoErr);
-                    }
-                }
 
                 // Formater les dates
                 const dateDebutFormatted = new Date(dateDebut).toLocaleDateString('fr-FR', {
@@ -1046,7 +952,7 @@ router.delete('/desinscription/:inscriptionId/future-occurrences', authMiddlewar
                 // Envoyer l'email au bénévole
                 await mailService.sendTemplateEmail(
                     benevole.email,
-                    7450673, // Utiliser le même template que pour la désinscription simple (à adapter si besoin)
+                    7796180, // Utiliser le même template que pour la désinscription simple (à adapter si besoin)
                     variables,
                     `Désinscription : ${inscription.action_nom} - ${count} occurrence(s)`
                 );
@@ -1086,13 +992,11 @@ router.delete('/desinscription/:inscriptionId', authMiddleware, async (req, res)
     try {
         const { inscriptionId } = req.params;
         const currentUserId = req.user.id;
-        const userAssociationNom = req.user.uri; // Association de l'utilisateur connecté
 
         // Récupérer l'inscription et vérifier les permissions
         const checkQuery = `
             SELECT ba.*,
                    a.nom as action_nom,
-                   a.association_nom,
                    a.rue, a.ville, a.pays,
                    a.heure_debut, a.heure_fin,
                    a.responsable_email
@@ -1112,11 +1016,8 @@ router.delete('/desinscription/:inscriptionId', authMiddleware, async (req, res)
 
         const inscription = inscriptions[0];
 
-        // Vérifier les permissions : soit c'est le bénévole lui-même, soit c'est un admin de l'association
-        const isOwnInscription = inscription.benevole_id === currentUserId;
-        const isAssociationAdmin = inscription.association_nom === userAssociationNom;
-
-        if (!isOwnInscription && !isAssociationAdmin) {
+        // Vérifier que c'est bien l'inscription du bénévole connecté
+        if (inscription.benevole_id !== currentUserId) {
             return res.status(403).json({
                 success: false,
                 message: 'Vous n\'avez pas les permissions pour désinscrire ce bénévole'
@@ -1128,33 +1029,21 @@ router.delete('/desinscription/:inscriptionId', authMiddleware, async (req, res)
             console.log(`[BENEVOLAT DESINSCRIPTION] Envoi des notifications email pour la désinscription ${inscriptionId}`);
 
             // 1. Récupérer les informations du bénévole
-            const benevoleQuery = 'SELECT nom, prenom, email, telephone FROM benevoles WHERE id = ?';
+            const benevoleQuery = 'SELECT nom, prenom, email, telephone FROM benevoles_users WHERE id = ?';
             const benevoleResults = await db.select(benevoleQuery, [inscription.benevole_id]);
 
             if (benevoleResults && benevoleResults.length > 0) {
                 const benevole = benevoleResults[0];
 
                 // 2. Récupérer les informations du responsable
-                const responsableQuery = 'SELECT nom, prenom FROM benevoles WHERE email = ?';
+                const responsableQuery = 'SELECT nom, prenom FROM benevoles_users WHERE email = ?';
                 const responsableResults = await db.select(responsableQuery, [inscription.responsable_email]);
 
                 const responsable = responsableResults && responsableResults.length > 0
                     ? responsableResults[0]
                     : { nom: '', prenom: '' };
 
-                // 3. Récupérer le logo de l'association
                 let logoUrl = '';
-                if (inscription.association_nom) {
-                    try {
-                        const assoQuery = 'SELECT nom, logoUrl FROM Assos WHERE uri = ?';
-                        const assoResults = await db.select(assoQuery, [inscription.association_nom], 'remote');
-                        if (assoResults && assoResults.length > 0 && assoResults[0].logoUrl) {
-                            logoUrl = `https://acdlp.com/${assoResults[0].logoUrl}`;
-                        }
-                    } catch (assoErr) {
-                        console.warn(`[BENEVOLAT DESINSCRIPTION] Impossible de récupérer le logo de l'association:`, assoErr);
-                    }
-                }
 
                 // 4. Formater la date et les horaires
                 const dateFormatted = new Date(inscription.date_action).toLocaleDateString('fr-FR', {
@@ -1184,7 +1073,7 @@ router.delete('/desinscription/:inscriptionId', authMiddleware, async (req, res)
 
                 // 5a. Envoyer l'email de confirmation au bénévole
                 try {
-                    const benevoleTemplateId = 7450673;
+                    const benevoleTemplateId = 7796180;
                     const benevoleVariables = {
                         ...commonVariables,
                         benevole_prenom: benevole.prenom
@@ -1204,7 +1093,7 @@ router.delete('/desinscription/:inscriptionId', authMiddleware, async (req, res)
 
                 // 5b. Envoyer l'email de notification au responsable
                 try {
-                    const responsableTemplateId = 7450675;
+                    const responsableTemplateId = 7796181;
                     const responsableVariables = {
                         ...commonVariables,
                         responsable_prenom: responsable.prenom || 'Responsable',
@@ -1285,10 +1174,9 @@ router.get('/cron/send-reminders', async (req, res) => {
         a.heure_fin,
         a.rue,
         a.ville,
-        a.pays,
-        a.association_nom
+        a.pays
       FROM Benevoles_Actions ba
-      JOIN benevoles b ON ba.benevole_id = b.id
+      JOIN benevoles_users b ON ba.benevole_id = b.id
       JOIN actions a ON ba.action_id = a.id
       WHERE ba.date_action = ?
         AND ba.statut = 'inscrit'
@@ -1320,19 +1208,7 @@ router.get('/cron/send-reminders', async (req, res) => {
       try {
         console.log(`[CRON REMINDERS] Traitement de l'inscription ${inscription.inscription_id} pour ${inscription.benevole_email}`);
 
-        // 3a. Récupérer le logo de l'association
         let logoUrl = '';
-        if (inscription.association_nom) {
-          try {
-            const assoQuery = 'SELECT logoUrl FROM Assos WHERE uri = ?';
-            const assoResults = await db.select(assoQuery, [inscription.association_nom], 'remote');
-            if (assoResults && assoResults.length > 0 && assoResults[0].logoUrl) {
-              logoUrl = `https://acdlp.com/${assoResults[0].logoUrl}`;
-            }
-          } catch (assoErr) {
-            console.warn(`[CRON REMINDERS] Impossible de récupérer le logo pour ${inscription.association_nom}:`, assoErr);
-          }
-        }
 
         // 3b. Formater la date en français
         const dateFormatted = new Date(inscription.date_action).toLocaleDateString('fr-FR', {
@@ -1365,7 +1241,7 @@ router.get('/cron/send-reminders', async (req, res) => {
         // 3f. Envoyer l'email
         await mailService.sendTemplateEmail(
           inscription.benevole_email,
-          7451569, // ID du template de rappel
+          7796182, // ID du template de rappel
           variables,
           `Rappel : ${inscription.action_nom} demain à ${heureDebut}`
         );
@@ -1440,7 +1316,7 @@ router.get('/cron/sync-to-sheets', async (req, res) => {
     // 1. Récupérer tous les bénévoles de la table
     const query = `
       SELECT nom, prenom, genre, telephone, statut
-      FROM benevoles
+      FROM benevoles_users
       ORDER BY nom, prenom
     `;
 

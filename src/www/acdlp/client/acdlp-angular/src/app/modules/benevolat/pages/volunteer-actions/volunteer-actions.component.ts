@@ -89,22 +89,10 @@ export class VolunteerActionsComponent implements OnInit {
     this.loading = true;
     this.error = false;
     
-    // TODO: Récupérer l'association du bénévole connecté depuis le JWT
-    const associationName = 'au-coeur-de-la-precarite'; // Temporaire
-    
     // Toujours récupérer toutes les actions, le filtrage se fait côté frontend
-    this.actionService.getActions(associationName, 'all').subscribe({
+    this.actionService.getActions('all').subscribe({
       next: (actions) => {
         console.log('[FRONTEND DEBUG] Actions reçues:', actions.length);
-        if (actions.length > 0) {
-          console.log('[FRONTEND DEBUG] Première action:', {
-            id: actions[0].id,
-            nom: actions[0].nom,
-            association_nom: actions[0].association_nom,
-            association_logo_url: actions[0].association_logo_url,
-            association_nom_complet: actions[0].association_nom_complet
-          });
-        }
         this.actions = actions;
         this.generateCalendar();
         this.loading = false;
