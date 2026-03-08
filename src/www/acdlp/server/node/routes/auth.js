@@ -505,7 +505,7 @@ router.post('/request-password-reset', async (req, res) => {
         console.log(`   Token: ${resetToken}`);
         console.log(`   Expire le: ${new Date(tokenExpiry)}`);
 
-        const templateId = 7796176;
+        const templateId = 7755509;
         const variables = {
             prenom: volunteer.prenom,
             lien_reinit_password: resetUrl
@@ -558,7 +558,7 @@ router.post('/request-password-reset-current-user', authMiddleware, async (req, 
         console.log(`   Token: ${resetToken}`);
         console.log(`   Expire le: ${new Date(tokenExpiry)}`);
 
-        const templateId = 7796176;
+        const templateId = 7755509;
         const variables = {
             prenom: volunteer.prenom,
             lien_reinit_password: resetUrl
