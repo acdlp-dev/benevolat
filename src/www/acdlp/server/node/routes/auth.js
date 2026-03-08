@@ -126,6 +126,7 @@ router.post('/request-otp', async(req, res) => {
                     const variables = {
                         prenom: volunteer.prenom || 'Bénévole',
                         lien_reinit_password: resetUrl,
+                        lien_reinit: 'https://benevolat.acdlp.com/app/forgot-password',
                         logo_url: ''
                     };
 
