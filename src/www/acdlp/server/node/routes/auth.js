@@ -381,7 +381,8 @@ router.post('/complete-signup', async(req, res) => {
         try {
             const templateId = 7726868;
             const variables = {
-                logo_url: ''
+                logo_url: '',
+                lien_signin: 'https://benevolat.acdlp.com/app/signin'
             };
 
             await sendTemplateEmail(
@@ -675,7 +676,8 @@ router.get('/verify-email/:token', async(req, res) => {
         try {
             const templateId = 7726868;
             const variables = {
-                logo_url: ''
+                logo_url: '',
+                lien_signin: 'https://benevolat.acdlp.com/app/signin'
             };
 
             await sendTemplateEmail(
