@@ -54,10 +54,12 @@ router.get('/actions', authMiddleware, async (req, res) => {
                 a.nb_participants,
                 a.genre,
                 a.age,
-                a.created_at
+                a.created_at,
+                a.date_fin,
+                a.statut
             FROM actions a
             LEFT JOIN benevoles_users resp ON a.responsable_email = resp.email
-            WHERE 1=1
+            WHERE (a.statut IS NULL OR a.statut != 'inactif')
         `;
 
         let params = [];

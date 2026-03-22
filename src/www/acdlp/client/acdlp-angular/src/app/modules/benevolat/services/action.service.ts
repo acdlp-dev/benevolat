@@ -361,15 +361,20 @@ export class ActionService {
           }
           break;
 
-        case 'Quotidienne':
+        case 'Quotidienne': {
           // Actions quotidiennes - partir de la date d'action
+          // Limiter par date_fin si l'action est terminée
+          const dailyEndDate = action.date_fin ? new Date(action.date_fin) : null;
+          if (dailyEndDate) dailyEndDate.setHours(0, 0, 0, 0);
           let dailyDate = new Date(actionDate);
           let dailyCount = 0;
           console.log(`[CALENDAR DEBUG] Action quotidienne ${action.id} - date début:`, actionDate, 'maxDate:', maxDate);
           while (dailyDate <= endOfDisplay && dailyDate <= maxDate) {
+            // Arrêter si on dépasse la date de fin
+            if (dailyEndDate && dailyDate >= dailyEndDate) break;
             if (dailyDate >= startOfDisplay) {
               const calculatedDateStr = this.formatDateForApi(dailyDate);
-              
+
               // Skip si cette occurrence est masquée
               if (!this.isActionMasked(action.id, calculatedDateStr)) {
                 result.push({
@@ -386,14 +391,19 @@ export class ActionService {
           }
           console.log(`[CALENDAR DEBUG] Action quotidienne ${action.id} - ${dailyCount} occurrences ajoutées`);
           break;
+        }
 
-        case 'Hebdomadaire':
+        case 'Hebdomadaire': {
           // Actions hebdomadaires - même jour de la semaine, limité à 30 jours
+          const weeklyEndDate = action.date_fin ? new Date(action.date_fin) : null;
+          if (weeklyEndDate) weeklyEndDate.setHours(0, 0, 0, 0);
           let weeklyDate = new Date(actionDate);
           while (weeklyDate <= endOfDisplay && weeklyDate <= maxDate) {
+            // Arrêter si on dépasse la date de fin
+            if (weeklyEndDate && weeklyDate >= weeklyEndDate) break;
             if (weeklyDate >= startOfDisplay) {
               const calculatedDateStr = this.formatDateForApi(weeklyDate);
-              
+
               // Skip si cette occurrence est masquée
               if (!this.isActionMasked(action.id, calculatedDateStr)) {
                 result.push({
@@ -408,6 +418,7 @@ export class ActionService {
             weeklyDate.setDate(weeklyDate.getDate() + 7);
           }
           break;
+        }
       }
     });
 
