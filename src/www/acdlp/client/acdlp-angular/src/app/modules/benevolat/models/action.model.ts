@@ -16,8 +16,10 @@ export interface BenevoleAction {
   nb_participants: number;
   genre: 'homme' | 'femme' | 'mixte';
   age: 'majeure' | 'mineur' | 'tous';
+  date_fin?: string;
+  statut?: string;
   created_at?: string;
-  
+
   // Propriétés ajoutées par les jointures
   inscriptions_actuelles?: number;
   places_restantes?: number;
