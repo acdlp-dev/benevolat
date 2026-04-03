@@ -484,8 +484,8 @@ router.post('/request-password-reset', async (req, res) => {
             const signupUrl = `${urlOrigin}/app/signup`;
 
             await sendTemplateEmail(email, 7726847, {
-                lien_creation_compte: signupUrl
-            }, 'Espace Bénévole : Création de compte');
+                lien_creation: "https://benevolat.acdlp.com/app/signup"
+            }, 'Espace Bénévole : Compte inconnu');
 
             // Toujours retourner un message générique pour éviter l'énumération
             return res.status(200).json({
