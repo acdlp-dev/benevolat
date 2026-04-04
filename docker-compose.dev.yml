@@ -76,7 +76,7 @@ services:
       - ./src/www/acdlp/client/acdlp-angular/dist:/usr/src/app/src/www/acdlp/client/acdlp-angular/dist
     command: >
       bash -c "
-        npm install -g npm@latest && \
+        npm install -g npm@11.4.1 && \
         npm install -g @angular/cli@latest && \
         if [ ! -f '/usr/src/app/src/www/acdlp/client/acdlp-angular/package.json' ]; then \
             npx -y @angular/cli@latest new my-app --routing --style=scss --defaults --skip-git; \
