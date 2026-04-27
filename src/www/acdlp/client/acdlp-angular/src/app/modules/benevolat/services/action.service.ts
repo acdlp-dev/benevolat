@@ -2,16 +2,17 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, BehaviorSubject, map, catchError, throwError } from 'rxjs';
 import { environment } from 'src/environments/environment';
-import { 
-  BenevoleAction, 
-  CalendarAction, 
-  CalendarMonth, 
-  CalendarWeek, 
+import {
+  BenevoleAction,
+  CalendarAction,
+  CalendarMonth,
+  CalendarWeek,
   CalendarDay,
   ActionsResponse,
   InscriptionRequest,
   InscriptionResponse,
-  BenevoleProfile
+  BenevoleProfile,
+  SwitchResponsableResponse
 } from '../models/action.model';
 
 @Injectable({
@@ -187,6 +188,22 @@ export class ActionService {
           return throwError(() => error);
         })
       );
+  }
+
+  /**
+   * Transfère le rôle de responsable du jour vers un autre responsable inscrit.
+   */
+  switchResponsable(actionId: number, dateAction: string, targetInscriptionId: number): Observable<SwitchResponsableResponse> {
+    return this.http.patch<SwitchResponsableResponse>(
+      `${this.apiUrl}/actions/${actionId}/responsable`,
+      { date_action: dateAction, target_inscription_id: targetInscriptionId },
+      { withCredentials: true }
+    ).pipe(
+      catchError(error => {
+        console.error('Erreur lors du transfert du rôle de responsable:', error);
+        return throwError(() => error);
+      })
+    );
   }
 
   /**

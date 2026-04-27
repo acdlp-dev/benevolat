@@ -41,6 +41,13 @@ export class VolunteerActionsComponent implements OnInit {
   isResponsable = false;
   userEmail: string | null = null;
 
+  // État du "responsable du jour" pour l'occurrence ouverte dans la modale.
+  currentDayResponsable: any | null = null;
+  eligibleResponsables: any[] = [];
+  userIsCurrentDayResponsable = false;
+  selectedTransferTarget: number | null = null;
+  isTransferring = false;
+
   benevoleStats: any = null;
   loadingStats = false;
 
@@ -176,7 +183,12 @@ export class VolunteerActionsComponent implements OnInit {
       error: (error) => {
         console.error('Erreur lors de la désinscription:', error);
         this.actionInProgress = false;
-        
+
+        if (error.error?.code === 'RESPONSABLE_TRANSFER_REQUIRED') {
+          alert(error.error.message);
+          return;
+        }
+
         // Afficher un message d'erreur
         const message = error.error?.message || 'Erreur lors de la désinscription';
         alert(message);
@@ -652,6 +664,11 @@ export class VolunteerActionsComponent implements OnInit {
     this.showActionModal = false;
     this.actionParticipants = [];
     this.isResponsable = false;
+    this.currentDayResponsable = null;
+    this.eligibleResponsables = [];
+    this.userIsCurrentDayResponsable = false;
+    this.selectedTransferTarget = null;
+    this.isTransferring = false;
   }
 
   /**
@@ -669,6 +686,7 @@ export class VolunteerActionsComponent implements OnInit {
       next: (response) => {
         if (response && response.success) {
           this.actionParticipants = response.participants || [];
+          this.computeResponsableState();
         }
         this.isLoadingParticipants = false;
       },
@@ -679,6 +697,51 @@ export class VolunteerActionsComponent implements OnInit {
         if (error.status !== 403) {
           alert('Erreur lors du chargement des participants');
         }
+      }
+    });
+  }
+
+  /**
+   * Calcule l'état "responsable du jour" à partir de la liste des participants.
+   * Détermine qui est le responsable courant, les responsables éligibles à un
+   * transfert, et si l'utilisateur connecté est lui-même le responsable.
+   */
+  private computeResponsableState(): void {
+    this.currentDayResponsable = this.actionParticipants.find(p => p.is_responsable === 1) ?? null;
+    this.eligibleResponsables = this.actionParticipants.filter(
+      p => p.type === 'responsable' && p.is_responsable !== 1
+    );
+    this.userIsCurrentDayResponsable = !!this.currentDayResponsable
+      && this.currentDayResponsable.email === this.userEmail;
+  }
+
+  /**
+   * Transfère le rôle de responsable du jour vers le participant sélectionné.
+   */
+  confirmTransferResponsable(): void {
+    if (!this.selectedAction || !this.selectedTransferTarget || this.isTransferring) return;
+
+    const dateAction = this.actionService.formatDateForApi(this.selectedAction.calculatedDate);
+    this.isTransferring = true;
+
+    this.actionService.switchResponsable(
+      this.selectedAction.id,
+      dateAction,
+      this.selectedTransferTarget
+    ).subscribe({
+      next: () => {
+        this.isTransferring = false;
+        this.selectedTransferTarget = null;
+        if (this.selectedAction) {
+          this.loadActionParticipants(this.selectedAction.id);
+        }
+        alert('Rôle de responsable transféré avec succès.');
+      },
+      error: (error) => {
+        console.error('Erreur lors du transfert du rôle:', error);
+        this.isTransferring = false;
+        const message = error.error?.message || 'Erreur lors du transfert du rôle de responsable.';
+        alert(message);
       }
     });
   }
@@ -814,5 +877,21 @@ export class VolunteerActionsComponent implements OnInit {
 
   isResponsableType(): boolean {
     return this.benevoleStats?.type === 'responsable';
+  }
+
+  /**
+   * Prénom du responsable à afficher : currentDayResponsable si chargé,
+   * sinon fallback sur le champ global de l'action.
+   */
+  get displayResponsablePrenom(): string | null {
+    return this.currentDayResponsable?.prenom
+      ?? this.selectedAction?.responsable_prenom
+      ?? null;
+  }
+
+  get displayResponsableTelephone(): string | null {
+    return this.currentDayResponsable?.telephone
+      ?? this.selectedAction?.responsable_telephone
+      ?? null;
   }
 }

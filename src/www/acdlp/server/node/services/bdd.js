@@ -150,11 +150,30 @@ const maskSensitiveData = (data) => {
 
   return data;
 };
+// Exécute un bloc de requêtes dans une transaction.
+// fn reçoit une connexion liée à un pool donné ; toutes les requêtes faites via
+// conn.execute partagent la même transaction. Rollback automatique si fn jette.
+const transaction = async (fn, dbType = 'remote') => {
+  const conn = await getPool(dbType).getConnection();
+  try {
+    await conn.beginTransaction();
+    const result = await fn(conn);
+    await conn.commit();
+    return result;
+  } catch (err) {
+    await conn.rollback();
+    throw err;
+  } finally {
+    conn.release();
+  }
+};
+
 module.exports = {
   select,
   insert,
   update,
   remove,
+  transaction,
   // Exécuter une requête SQL libre (pratique pour UPDATE JOIN, etc.)
   query: async (sql, params = [], dbType = 'remote') => {
     console.log('[SQL Raw Query]:', sql);
