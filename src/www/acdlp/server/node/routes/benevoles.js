@@ -248,13 +248,37 @@ router.post('/inscription', authMiddleware, async (req, res) => {
             });
         }
 
-        // Procéder à l'inscription
-        const insertQuery = `
-            INSERT INTO Benevoles_Actions (benevole_id, action_id, date_action)
-            VALUES (?, ?, ?)
-        `;
+        // Procéder à l'inscription dans une transaction afin de poser
+        // is_responsable=1 si le bénévole est le référent par défaut de l'action
+        // et qu'aucun autre responsable n'est encore désigné pour cette occurrence.
+        const result = await db.transaction(async (conn) => {
+            const [insertResult] = await conn.execute(
+                'INSERT INTO Benevoles_Actions (benevole_id, action_id, date_action) VALUES (?, ?, ?)',
+                [benevole_id, action_id, date_action]
+            );
 
-        const result = await db.query(insertQuery, [benevole_id, action_id, date_action], 'remote');
+            const [emailRows] = await conn.execute(
+                'SELECT email FROM benevoles_users WHERE id = ?',
+                [benevole_id]
+            );
+            const benevoleEmail = emailRows[0]?.email;
+
+            if (benevoleEmail && action.responsable_email && benevoleEmail === action.responsable_email) {
+                const [existingResp] = await conn.execute(
+                    'SELECT id FROM Benevoles_Actions WHERE action_id = ? AND date_action = ? AND is_responsable = 1',
+                    [action_id, date_action]
+                );
+                if (existingResp.length === 0) {
+                    await conn.execute(
+                        'UPDATE Benevoles_Actions SET is_responsable = 1 WHERE id = ?',
+                        [insertResult.insertId]
+                    );
+                    console.log(`[BENEVOLAT INSCRIPTION] ✓ Référent par défaut posé sur l'inscription ${insertResult.insertId}`);
+                }
+            }
+
+            return insertResult;
+        });
 
         // Envoi des emails de notification après l'inscription réussie
         try {
@@ -453,10 +477,13 @@ router.get('/actions/:actionId/participants', authMiddleware, async (req, res) =
         ba.id as inscription_id,
         ba.statut,
         ba.date_action,
+        ba.is_responsable,
+        b.id as benevole_id,
         b.nom,
         b.prenom,
         b.email,
-        b.telephone
+        b.telephone,
+        b.type
       FROM Benevoles_Actions ba
       JOIN benevoles_users b ON ba.benevole_id = b.id
       WHERE ba.action_id = ?
@@ -615,6 +642,111 @@ router.patch('/actions/participants/:inscriptionId/statut', authMiddleware, asyn
     return res.status(500).json({
       success: false,
       message: 'Erreur lors de la mise à jour du statut'
+    });
+  }
+});
+
+/**
+ * PATCH /api/actions/:actionId/responsable
+ * Transfère le rôle de "responsable du jour" du bénévole connecté vers un autre
+ * responsable inscrit pour la même date. Le caller doit être l'actuel
+ * is_responsable=1 sur (action_id, date_action). La cible doit être inscrite
+ * sur la même occurrence et avoir benevoles_users.type = 'responsable'.
+ */
+router.patch('/actions/:actionId/responsable', authMiddleware, async (req, res) => {
+  try {
+    const { actionId } = req.params;
+    const { date_action, target_inscription_id } = req.body;
+    const callerId = req.user.id;
+
+    if (!date_action || !target_inscription_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'date_action et target_inscription_id sont requis'
+      });
+    }
+
+    // 1. Inscription du caller pour cette occurrence : doit être is_responsable=1
+    const callerRows = await db.select(
+      `SELECT id, is_responsable
+       FROM Benevoles_Actions
+       WHERE action_id = ? AND date_action = ? AND benevole_id = ?`,
+      [actionId, date_action, callerId]
+    );
+
+    if (!callerRows || callerRows.length === 0) {
+      return res.status(403).json({
+        success: false,
+        message: 'Vous n\'êtes pas inscrit pour cette occurrence'
+      });
+    }
+    if (callerRows[0].is_responsable !== 1) {
+      return res.status(403).json({
+        success: false,
+        message: 'Seul le responsable courant de l\'occurrence peut transférer le rôle'
+      });
+    }
+
+    const callerInscriptionId = callerRows[0].id;
+    if (callerInscriptionId === Number(target_inscription_id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vous êtes déjà le responsable de cette occurrence'
+      });
+    }
+
+    // 2. Cible : doit être inscrite sur la même (action, date) et type='responsable'
+    const targetRows = await db.select(
+      `SELECT ba.id, ba.benevole_id, b.type, b.email, b.nom, b.prenom
+       FROM Benevoles_Actions ba
+       JOIN benevoles_users b ON ba.benevole_id = b.id
+       WHERE ba.id = ? AND ba.action_id = ? AND ba.date_action = ?`,
+      [target_inscription_id, actionId, date_action]
+    );
+
+    if (!targetRows || targetRows.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Le bénévole cible n\'est pas inscrit pour cette occurrence'
+      });
+    }
+    if (targetRows[0].type !== 'responsable') {
+      return res.status(400).json({
+        success: false,
+        message: 'Le bénévole cible n\'est pas un responsable'
+      });
+    }
+
+    // 3. Switch atomique
+    await db.transaction(async (conn) => {
+      await conn.execute(
+        'UPDATE Benevoles_Actions SET is_responsable = 0 WHERE id = ?',
+        [callerInscriptionId]
+      );
+      await conn.execute(
+        'UPDATE Benevoles_Actions SET is_responsable = 1 WHERE id = ?',
+        [target_inscription_id]
+      );
+    });
+
+    console.log(`[BENEVOLAT TRANSFER] action=${actionId} date=${date_action} : inscription ${callerInscriptionId} → ${target_inscription_id}`);
+
+    return res.status(200).json({
+      success: true,
+      action_id: Number(actionId),
+      date_action,
+      new_responsable: {
+        id: targetRows[0].benevole_id,
+        email: targetRows[0].email,
+        prenom: targetRows[0].prenom,
+        nom: targetRows[0].nom
+      }
+    });
+  } catch (err) {
+    console.error('[Transfer Responsable Error]:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Erreur lors du transfert du rôle de responsable'
     });
   }
 });
@@ -849,6 +981,29 @@ router.delete('/desinscription/:inscriptionId/future-occurrences', authMiddlewar
             });
         }
 
+        // Bloquer en bloc si au moins une future occurrence a is_responsable=1 :
+        // l'utilisateur doit transférer le rôle date par date d'abord.
+        const blockingResponsable = await db.select(
+            `SELECT date_action FROM Benevoles_Actions
+             WHERE benevole_id = ? AND action_id = ? AND date_action >= ? AND is_responsable = 1
+             ORDER BY date_action ASC`,
+            [inscription.benevole_id, inscription.action_id, inscription.date_action]
+        );
+
+        if (blockingResponsable && blockingResponsable.length > 0) {
+            return res.status(403).json({
+                success: false,
+                code: 'RESPONSABLE_TRANSFER_REQUIRED',
+                message: "Vous êtes responsable sur certaines occurrences futures. Transférez le rôle sur ces dates avant de vous désinscrire en masse.",
+                blocking_dates: blockingResponsable.map(r => {
+                    const d = r.date_action instanceof Date
+                        ? r.date_action.toISOString().split('T')[0]
+                        : r.date_action;
+                    return d;
+                })
+            });
+        }
+
         // Récupérer toutes les inscriptions futures (>= date de l'occurrence cliquée)
         const futureInscriptionsQuery = `
             SELECT ba.id, ba.date_action
@@ -1023,6 +1178,16 @@ router.delete('/desinscription/:inscriptionId', authMiddleware, async (req, res)
             return res.status(403).json({
                 success: false,
                 message: 'Vous n\'avez pas les permissions pour désinscrire ce bénévole'
+            });
+        }
+
+        // Bloquer si l'utilisateur est le responsable de cette occurrence : il
+        // doit d'abord transférer le rôle à un autre responsable inscrit.
+        if (inscription.is_responsable === 1) {
+            return res.status(403).json({
+                success: false,
+                code: 'RESPONSABLE_TRANSFER_REQUIRED',
+                message: "Vous êtes le responsable de cette occurrence. Transférez le rôle à un autre responsable inscrit avant de vous désinscrire."
             });
         }
 

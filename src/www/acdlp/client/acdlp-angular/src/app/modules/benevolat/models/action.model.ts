@@ -76,3 +76,28 @@ export interface ActionsResponse {
   actions: BenevoleAction[];
   total: number;
 }
+
+export interface ActionParticipant {
+  inscription_id: number;
+  benevole_id: number;
+  nom: string;
+  prenom: string;
+  email: string;
+  telephone?: string;
+  statut: 'inscrit' | 'présent' | 'absent';
+  date_action: string;
+  is_responsable: 0 | 1;
+  type?: string;
+}
+
+export interface SwitchResponsableResponse {
+  success: boolean;
+  action_id: number;
+  date_action: string;
+  new_responsable: {
+    id: number;
+    email: string;
+    prenom: string;
+    nom: string;
+  };
+}
