@@ -1525,4 +1525,105 @@ router.get('/cron/sync-to-sheets', async (req, res) => {
 });
 
 
+/**
+ * GET /api/mes-participations
+ * Retourne toutes les participations (inscrit, présent, absent) du bénévole connecté
+ */
+router.get('/mes-participations', authMiddleware, async (req, res) => {
+  try {
+    const benevoleId = req.user.id;
+
+    const rows = await db.select(
+      `SELECT ba.id AS inscription_id, ba.statut, ba.date_action, ba.is_responsable,
+              a.nom, a.heure_debut, a.heure_fin, a.rue, a.ville
+       FROM Benevoles_Actions ba
+       JOIN actions a ON ba.action_id = a.id
+       WHERE ba.benevole_id = ?
+       ORDER BY ba.date_action DESC`,
+      [benevoleId]
+    );
+
+    return res.json({ participations: rows || [] });
+  } catch (error) {
+    console.error('[GET /api/mes-participations] Erreur:', error);
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+/**
+ * GET /api/attestation/:inscriptionId
+ * Génère et retourne une attestation de bénévolat Word (.docx) pour une participation au statut "présent"
+ */
+router.get('/attestation/:inscriptionId', authMiddleware, async (req, res) => {
+  try {
+    const benevoleId = req.user.id;
+    const { inscriptionId } = req.params;
+
+    // Vérifier que l'inscription appartient au bénévole et est au statut "présent"
+    const rows = await db.select(
+      `SELECT ba.statut, ba.date_action,
+              a.nom AS action_nom, a.heure_debut, a.heure_fin,
+              u.prenom, u.nom
+       FROM Benevoles_Actions ba
+       JOIN actions a ON ba.action_id = a.id
+       JOIN benevoles_users u ON u.id = ba.benevole_id
+       WHERE ba.id = ? AND ba.benevole_id = ?`,
+      [inscriptionId, benevoleId]
+    );
+
+    if (!rows || rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Participation introuvable' });
+    }
+
+    const row = rows[0];
+    if (row.statut !== 'présent') {
+      return res.status(403).json({ success: false, message: 'Attestation disponible uniquement pour les participations au statut "présent"' });
+    }
+
+    // Calcul du nombre d'heures
+    const [hDebH, hDebM] = row.heure_debut.split(':').map(Number);
+    const [hFinH, hFinM] = row.heure_fin.split(':').map(Number);
+    const nbHeures = ((hFinH * 60 + hFinM) - (hDebH * 60 + hDebM)) / 60;
+    const nbHeuresStr = nbHeures % 1 === 0 ? `${nbHeures}` : nbHeures.toFixed(1).replace('.', 'h');
+
+    // Formatage de la date
+    const formatDate = (d) => {
+      const date = new Date(d);
+      return date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    };
+
+    const PizZip = require('pizzip');
+    const Docxtemplater = require('docxtemplater');
+    const fs = require('fs');
+    const path = require('path');
+
+    const templatePath = path.join(__dirname, '../../../../docs/AttestationBenevoleSOA.docx');
+    const content = fs.readFileSync(templatePath, 'binary');
+    const zip = new PizZip(content);
+    const doc = new Docxtemplater(zip, { paragraphLoop: true, linebreaks: true });
+
+    doc.render({
+      prenom_nom: `${row.prenom} ${row.nom.toUpperCase()}`,
+      date_debut: formatDate(row.date_action),
+      date_fin: formatDate(row.date_action),
+      nb_heures: nbHeuresStr,
+      date_jour: formatDate(new Date())
+    });
+
+    const buffer = doc.getZip().generate({ type: 'nodebuffer' });
+    const filename = `attestation_benevole_${row.prenom.toLowerCase()}_${row.nom.toLowerCase()}.docx`;
+
+    res.set({
+      'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'Content-Disposition': `attachment; filename="${filename}"`,
+      'Content-Length': buffer.length
+    });
+    return res.send(buffer);
+
+  } catch (error) {
+    console.error('[GET /api/attestation/:inscriptionId] Erreur:', error);
+    return res.status(500).json({ success: false, message: 'Erreur lors de la génération de l\'attestation' });
+  }
+});
+
 module.exports = router;

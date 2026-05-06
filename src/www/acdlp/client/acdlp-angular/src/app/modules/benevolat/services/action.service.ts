@@ -559,6 +559,39 @@ export class ActionService {
   }
 
   /**
+   * Récupère toutes les participations du bénévole connecté (inscrit, présent, absent)
+   */
+  getParticipations(): Observable<{ participations: any[] }> {
+    return this.http.get<{ participations: any[] }>(`${this.apiUrl}/mes-participations`, {
+      withCredentials: true
+    });
+  }
+
+  /**
+   * Télécharge l'attestation de bénévolat pour une participation au statut "présent"
+   */
+  downloadAttestation(inscriptionId: number): void {
+    this.http.get(`${this.apiUrl}/attestation/${inscriptionId}`, {
+      responseType: 'blob',
+      withCredentials: true
+    }).subscribe({
+      next: (blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'attestation_benevole.docx';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      },
+      error: (err) => {
+        console.error('[downloadAttestation] Erreur:', err);
+      }
+    });
+  }
+
+  /**
    * Obtient le texte des places restantes
    */
   getPlacesText(action: BenevoleAction): string {

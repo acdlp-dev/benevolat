@@ -12,6 +12,7 @@ import { VolunteerEmailStepComponent } from './pages/volunteer-email-step/volunt
 import { VolunteerOtpVerificationComponent } from './pages/volunteer-otp-verification/volunteer-otp-verification.component';
 import { VolunteerCompleteSignupComponent } from './pages/volunteer-complete-signup/volunteer-complete-signup.component';
 import { VolunteerProfileComponent } from './pages/volunteer-profile/volunteer-profile.component';
+import { VolunteerMyActionsComponent } from './pages/volunteer-my-actions/volunteer-my-actions.component';
 const routes: Routes = [
   {
     path: '',
@@ -62,7 +63,10 @@ const routes: Routes = [
         path: 'profile',
         component: VolunteerProfileComponent
       },
-      
+      {
+        path: 'mes-actions',
+        component: VolunteerMyActionsComponent
+      },
     ]
   }
 ];
