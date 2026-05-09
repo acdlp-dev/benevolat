@@ -568,26 +568,14 @@ export class ActionService {
   }
 
   /**
-   * Télécharge l'attestation de bénévolat pour une participation au statut "présent"
+   * Génère et télécharge l'attestation PDF pour une plage de dates.
+   * Retourne une Observable — l'appelant gère les erreurs (blocage si présences non validées).
    */
-  downloadAttestation(inscriptionId: number): void {
-    this.http.get(`${this.apiUrl}/attestation/${inscriptionId}`, {
+  generateAttestation(dateDebut: string, dateFin: string): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}/attestation`, {
+      params: { date_debut: dateDebut, date_fin: dateFin },
       responseType: 'blob',
       withCredentials: true
-    }).subscribe({
-      next: (blob) => {
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'attestation_benevole.docx';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-      },
-      error: (err) => {
-        console.error('[downloadAttestation] Erreur:', err);
-      }
     });
   }
 

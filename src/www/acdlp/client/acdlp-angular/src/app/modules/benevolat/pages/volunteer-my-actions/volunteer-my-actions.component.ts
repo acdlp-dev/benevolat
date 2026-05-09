@@ -25,7 +25,6 @@ export class VolunteerMyActionsComponent implements OnInit {
   participations: Participation[] = [];
   loading = true;
   error = false;
-  downloadingId: number | null = null;
 
   constructor(private actionService: ActionService) {}
 
@@ -49,11 +48,5 @@ export class VolunteerMyActionsComponent implements OnInit {
 
   formatHeure(h: string): string {
     return h ? h.substring(0, 5) : '';
-  }
-
-  downloadAttestation(inscriptionId: number): void {
-    this.downloadingId = inscriptionId;
-    this.actionService.downloadAttestation(inscriptionId);
-    setTimeout(() => { this.downloadingId = null; }, 2000);
   }
 }

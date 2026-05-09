@@ -13,6 +13,7 @@ import { VolunteerOtpVerificationComponent } from './pages/volunteer-otp-verific
 import { VolunteerCompleteSignupComponent } from './pages/volunteer-complete-signup/volunteer-complete-signup.component';
 import { VolunteerProfileComponent } from './pages/volunteer-profile/volunteer-profile.component';
 import { VolunteerMyActionsComponent } from './pages/volunteer-my-actions/volunteer-my-actions.component';
+import { VolunteerAttestationComponent } from './pages/volunteer-attestation/volunteer-attestation.component';
 const routes: Routes = [
   {
     path: '',
@@ -66,6 +67,10 @@ const routes: Routes = [
       {
         path: 'mes-actions',
         component: VolunteerMyActionsComponent
+      },
+      {
+        path: 'attestation',
+        component: VolunteerAttestationComponent
       },
     ]
   }

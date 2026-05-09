@@ -44,9 +44,8 @@
       <p class="text-xs text-gray-400">{{ formatHeure(p.heure_debut) }} – {{ formatHeure(p.heure_fin) }}</p>
     </div>
 
-    <!-- Statut + bouton attestation -->
-    <div class="flex items-center gap-3 flex-shrink-0">
-      <!-- Badge statut -->
+    <!-- Badge statut -->
+    <div class="flex-shrink-0">
       <span
         class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium"
         [ngClass]="{
@@ -56,22 +55,6 @@
         }">
         {{ p.statut | titlecase }}
       </span>
-
-      <!-- Bouton attestation (uniquement pour statut "présent") -->
-      <button
-        *ngIf="p.statut === 'présent'"
-        (click)="downloadAttestation(p.inscription_id)"
-        [disabled]="downloadingId === p.inscription_id"
-        class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white text-xs font-medium rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
-        <svg *ngIf="downloadingId !== p.inscription_id" class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-        </svg>
-        <svg *ngIf="downloadingId === p.inscription_id" class="animate-spin h-3.5 w-3.5" fill="none" viewBox="0 0 24 24">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-        </svg>
-        Attestation
-      </button>
     </div>
   </div>
 </div>

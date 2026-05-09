@@ -50,6 +50,7 @@ services:
       - "./.env:/usr/src/app/.env:ro"
       - "./src/www/acdlp/server/node/pdf/recuFiscal:/usr/src/app/pdf/recuFiscal"
       - "./src/www/acdlp/client/acdlp-angular/src/assets:/usr/src/app/assets"
+      - "./docs:/usr/src/app/docs:ro"
       - "logs-data:/var/log/acdlp"
     ports:
       - "4242:4242"

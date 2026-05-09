@@ -1551,77 +1551,135 @@ router.get('/mes-participations', authMiddleware, async (req, res) => {
 });
 
 /**
- * GET /api/attestation/:inscriptionId
- * Génère et retourne une attestation de bénévolat Word (.docx) pour une participation au statut "présent"
+ * GET /api/attestation?date_debut=YYYY-MM-DD&date_fin=YYYY-MM-DD
+ * Génère une attestation de bénévolat PDF pour une plage de dates.
+ * - Bloque si des participations sont encore à l'état "inscrit" dans la plage (présence non validée)
+ * - Somme les heures des participations au statut "présent"
  */
-router.get('/attestation/:inscriptionId', authMiddleware, async (req, res) => {
+router.get('/attestation', authMiddleware, async (req, res) => {
   try {
     const benevoleId = req.user.id;
-    const { inscriptionId } = req.params;
+    const { date_debut, date_fin } = req.query;
 
-    // Vérifier que l'inscription appartient au bénévole et est au statut "présent"
+    if (!date_debut || !date_fin) {
+      return res.status(400).json({ success: false, message: 'Les paramètres date_debut et date_fin sont requis' });
+    }
+
+    // Récupérer le profil du bénévole
+    const benevoles = await db.select('SELECT prenom, nom FROM benevoles_users WHERE id = ?', [benevoleId]);
+    if (!benevoles || benevoles.length === 0) {
+      return res.status(404).json({ success: false, message: 'Bénévole introuvable' });
+    }
+    const { prenom, nom } = benevoles[0];
+
+    // Récupérer toutes les participations (inscrit + présent) dans la plage — on exclut "absent"
     const rows = await db.select(
-      `SELECT ba.statut, ba.date_action,
-              a.nom AS action_nom, a.heure_debut, a.heure_fin,
-              u.prenom, u.nom
+      `SELECT ba.id AS inscription_id, ba.statut, ba.date_action,
+              a.nom, a.heure_debut, a.heure_fin
        FROM Benevoles_Actions ba
        JOIN actions a ON ba.action_id = a.id
-       JOIN benevoles_users u ON u.id = ba.benevole_id
-       WHERE ba.id = ? AND ba.benevole_id = ?`,
-      [inscriptionId, benevoleId]
+       WHERE ba.benevole_id = ?
+         AND ba.date_action BETWEEN ? AND ?
+         AND ba.statut IN ('inscrit', 'présent')
+       ORDER BY ba.date_action ASC`,
+      [benevoleId, date_debut, date_fin]
     );
 
     if (!rows || rows.length === 0) {
-      return res.status(404).json({ success: false, message: 'Participation introuvable' });
+      return res.status(404).json({ success: false, message: 'Aucune participation trouvée sur cette période' });
     }
 
-    const row = rows[0];
-    if (row.statut !== 'présent') {
-      return res.status(403).json({ success: false, message: 'Attestation disponible uniquement pour les participations au statut "présent"' });
+    // Vérifier si des actions sont encore à l'état "inscrit" (présence non validée)
+    const actionsNonValidees = rows.filter(r => r.statut === 'inscrit');
+    if (actionsNonValidees.length > 0) {
+      return res.status(409).json({
+        success: false,
+        code: 'PRESENCE_NON_VALIDEE',
+        message: 'Certaines participations ne sont pas encore validées. Veuillez demander à votre responsable de valider votre présence pour ces actions.',
+        actions_bloquantes: actionsNonValidees.map(r => ({
+          nom: r.nom,
+          date: r.date_action,
+          heure_debut: r.heure_debut ? r.heure_debut.substring(0, 5) : '',
+          heure_fin: r.heure_fin ? r.heure_fin.substring(0, 5) : ''
+        }))
+      });
     }
 
-    // Calcul du nombre d'heures
-    const [hDebH, hDebM] = row.heure_debut.split(':').map(Number);
-    const [hFinH, hFinM] = row.heure_fin.split(':').map(Number);
-    const nbHeures = ((hFinH * 60 + hFinM) - (hDebH * 60 + hDebM)) / 60;
-    const nbHeuresStr = nbHeures % 1 === 0 ? `${nbHeures}` : nbHeures.toFixed(1).replace('.', 'h');
+    // Somme des heures des participations "présent"
+    let totalMinutes = 0;
+    for (const r of rows) {
+      const [hDebH, hDebM] = r.heure_debut.split(':').map(Number);
+      const [hFinH, hFinM] = r.heure_fin.split(':').map(Number);
+      totalMinutes += (hFinH * 60 + hFinM) - (hDebH * 60 + hDebM);
+    }
+    const totalHeures = Math.floor(totalMinutes / 60);
+    const totalMins = totalMinutes % 60;
+    const nbHeuresStr = totalMins === 0 ? `${totalHeures}` : `${totalHeures}h${String(totalMins).padStart(2, '0')}`;
 
-    // Formatage de la date
+    // Formatage des dates
     const formatDate = (d) => {
       const date = new Date(d);
       return date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
     };
+    const today = new Date();
+    const dateGeneration = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
-    const PizZip = require('pizzip');
-    const Docxtemplater = require('docxtemplater');
-    const fs = require('fs');
-    const path = require('path');
+    // Génération du PDF avec pdfkit
+    const PDFDocument = require('pdfkit');
+    const doc = new PDFDocument({ margin: 60, size: 'A4' });
 
-    const templatePath = path.join(__dirname, '../../../../docs/AttestationBenevoleSOA.docx');
-    const content = fs.readFileSync(templatePath, 'binary');
-    const zip = new PizZip(content);
-    const doc = new Docxtemplater(zip, { paragraphLoop: true, linebreaks: true });
+    const chunks = [];
+    doc.on('data', chunk => chunks.push(chunk));
 
-    doc.render({
-      prenom_nom: `${row.prenom} ${row.nom.toUpperCase()}`,
-      date_debut: formatDate(row.date_action),
-      date_fin: formatDate(row.date_action),
-      nb_heures: nbHeuresStr,
-      date_jour: formatDate(new Date())
-    });
+    // En-tête association
+    doc.fontSize(11).font('Helvetica-Bold').text('Association Au Cœur De La Précarité', { align: 'left' });
+    doc.fontSize(10).font('Helvetica').text('8 rue de l\'Equerre 95310 Saint Ouen L\'Aumône');
+    doc.text('Téléphone : 01 41 68 28 63');
+    doc.text('Email : ressources-humaines@aucoeurdelaprecarite.com');
 
-    const buffer = doc.getZip().generate({ type: 'nodebuffer' });
-    const filename = `attestation_benevole_${row.prenom.toLowerCase()}_${row.nom.toLowerCase()}.docx`;
+    doc.moveDown(2);
+
+    // Titre
+    doc.fontSize(16).font('Helvetica-Bold').text('ATTESTATION DE BÉNÉVOLAT', { align: 'center', underline: true });
+
+    doc.moveDown(2);
+
+    // Corps
+    doc.fontSize(11).font('Helvetica')
+      .text('Je soussigné M. Umaran RANA, responsable du pôle ressources humaines de l\'association Au Cœur De La Précarité, atteste par la présente que :');
+
+    doc.moveDown();
+    doc.fontSize(13).font('Helvetica-Bold').text(`${prenom} ${nom.toUpperCase()}`, { align: 'center' });
+
+    doc.moveDown();
+    doc.fontSize(11).font('Helvetica')
+      .text(`a effectué un bénévolat au sein de notre association du ${formatDate(date_debut)} au ${formatDate(date_fin)} pour un total de ${nbHeuresStr} heure(s).`);
+
+    doc.moveDown();
+    doc.text('L\'activité a été réalisée de manière totalement bénévole, sans aucune rémunération.');
+
+    doc.moveDown(2);
+    doc.text(`Fait à Saint Ouen L'Aumône, le ${formatDate(today)}`);
+
+    doc.moveDown(2);
+    doc.font('Helvetica-Bold').text('Umaran RANA – Responsable du pôle ressources humaines');
+
+    doc.end();
+
+    await new Promise((resolve) => doc.on('end', resolve));
+
+    const pdfBuffer = Buffer.concat(chunks);
+    const filename = `attestation_benevole_${dateGeneration}.pdf`;
 
     res.set({
-      'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'Content-Type': 'application/pdf',
       'Content-Disposition': `attachment; filename="${filename}"`,
-      'Content-Length': buffer.length
+      'Content-Length': pdfBuffer.length
     });
-    return res.send(buffer);
+    return res.send(pdfBuffer);
 
   } catch (error) {
-    console.error('[GET /api/attestation/:inscriptionId] Erreur:', error);
+    console.error('[GET /api/attestation] Erreur:', error);
     return res.status(500).json({ success: false, message: 'Erreur lors de la génération de l\'attestation' });
   }
 });
