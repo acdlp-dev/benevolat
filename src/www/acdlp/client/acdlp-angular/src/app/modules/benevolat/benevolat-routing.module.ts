@@ -15,6 +15,7 @@ import { VolunteerProfileComponent } from './pages/volunteer-profile/volunteer-p
 import { VolunteerMyActionsComponent } from './pages/volunteer-my-actions/volunteer-my-actions.component';
 import { VolunteerAttestationComponent } from './pages/volunteer-attestation/volunteer-attestation.component';
 import { VolunteerPendingValidationsComponent } from './pages/volunteer-pending-validations/volunteer-pending-validations.component';
+import { VolunteerPortailComponent } from './pages/volunteer-portail/volunteer-portail.component';
 const routes: Routes = [
   {
     path: '',
@@ -76,6 +77,10 @@ const routes: Routes = [
       {
         path: 'validations-en-attente',
         component: VolunteerPendingValidationsComponent
+      },
+      {
+        path: 'portail',
+        component: VolunteerPortailComponent
       },
     ]
   }

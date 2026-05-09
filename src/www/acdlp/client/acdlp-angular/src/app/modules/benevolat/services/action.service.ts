@@ -605,6 +605,13 @@ export class ActionService {
     });
   }
 
+  ouvrirPortail(): Observable<{ success: boolean; message: string; callId?: string }> {
+    return this.http.post<{ success: boolean; message: string; callId?: string }>(
+      `${this.apiUrl}/portail/ouvrir`, {},
+      { withCredentials: true }
+    );
+  }
+
   getPendingValidations(): Observable<{ success: boolean; data: PendingValidationDay[] }> {
     return this.http.get<{ success: boolean; data: PendingValidationDay[] }>(`${this.apiUrl}/validations-en-attente`, {
       withCredentials: true

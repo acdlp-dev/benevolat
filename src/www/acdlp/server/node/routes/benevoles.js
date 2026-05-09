@@ -1861,4 +1861,79 @@ router.get('/attestations/:filename', authMiddleware, async (req, res) => {
   }
 });
 
+/**
+ * POST /api/portail/ouvrir
+ * Déclenche l'ouverture du portail via Twilio (réservé aux responsables).
+ */
+router.post('/portail/ouvrir', authMiddleware, async (req, res) => {
+  try {
+    const axios = require('axios');
+
+    // Vérifier que l'utilisateur est responsable
+    const users = await db.select('SELECT type, prenom, nom, email FROM benevoles_users WHERE id = ?', [req.user.id]);
+    if (!users || users[0]?.type !== 'responsable') {
+      return res.status(403).json({ success: false, message: 'Accès réservé aux responsables' });
+    }
+    const { prenom, nom, email } = users[0];
+
+    // Anti-spam : vérifier qu'aucune ouverture réussie n'a eu lieu dans les 10 dernières secondes
+    const recent = await db.select(
+      `SELECT created_at FROM portail_logs WHERE statut = 'success' ORDER BY created_at DESC LIMIT 1`,
+      []
+    );
+    if (recent && recent.length > 0) {
+      const lastOpen = new Date(recent[0].created_at);
+      const diffSeconds = (Date.now() - lastOpen.getTime()) / 1000;
+      if (diffSeconds < 10) {
+        return res.status(429).json({
+          success: false,
+          message: `Portail déjà ouvert il y a ${Math.ceil(10 - diffSeconds)} seconde(s). Veuillez patienter.`
+        });
+      }
+    }
+
+    const SID = process.env.TWILIO_ACCOUNT_SID;
+    const TOKEN = process.env.TWILIO_AUTH_TOKEN;
+    const FROM = process.env.TWILIO_PHONE_NUMBER;
+    const TO = process.env.PORTAIL_PHONE;
+
+    if (!SID || !TOKEN || !FROM || !TO) {
+      await db.insert('portail_logs', {
+        ouvert_par_id: req.user.id, ouvert_par_nom: `${prenom} ${nom}`, ouvert_par_email: email,
+        source: 'benevolat', statut: 'failed', raison_echec: 'Configuration Twilio manquante',
+        ip_address: req.ip
+      });
+      return res.status(500).json({ success: false, message: 'Configuration Twilio manquante sur le serveur.' });
+    }
+
+    const twiml = '<Response><Say language="fr-FR">Ouverture du portail</Say><Pause length="2"/></Response>';
+
+    const response = await axios.post(
+      `https://api.twilio.com/2010-04-01/Accounts/${SID}/Calls.json`,
+      new URLSearchParams({ To: TO, From: FROM, Twiml: twiml }),
+      { auth: { username: SID, password: TOKEN } }
+    );
+
+    const callId = response.data?.sid || null;
+    await db.insert('portail_logs', {
+      ouvert_par_id: req.user.id, ouvert_par_nom: `${prenom} ${nom}`, ouvert_par_email: email,
+      source: 'benevolat', statut: 'success', twilio_call_id: callId,
+      ip_address: req.ip
+    });
+
+    return res.json({ success: true, message: 'Portail en cours d\'ouverture !', callId });
+
+  } catch (error) {
+    const raison = error.response?.data?.message || error.message || 'Erreur inconnue';
+    console.error('[POST /api/portail/ouvrir] Erreur:', raison);
+    try {
+      await db.insert('portail_logs', {
+        ouvert_par_id: req.user.id, source: 'benevolat',
+        statut: 'failed', raison_echec: raison, ip_address: req.ip
+      });
+    } catch (_) {}
+    return res.status(500).json({ success: false, message: `Erreur lors de l'ouverture : ${raison}` });
+  }
+});
+
 module.exports = router;
