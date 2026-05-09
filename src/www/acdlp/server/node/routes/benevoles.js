@@ -1626,13 +1626,22 @@ router.get('/attestation', authMiddleware, async (req, res) => {
 
     // Génération du PDF avec pdfkit
     const PDFDocument = require('pdfkit');
+    const fs = require('fs');
+    const path = require('path');
+
     const doc = new PDFDocument({ margin: 60, size: 'A4' });
 
     const chunks = [];
     doc.on('data', chunk => chunks.push(chunk));
 
-    // En-tête association
-    doc.fontSize(11).font('Helvetica-Bold').text('Association Au Cœur De La Précarité', { align: 'left' });
+    // Logo association (coin supérieur droit)
+    const logoPath = path.join(__dirname, '../assets/images/asso/au-coeur-de-la-precarite.png');
+    if (fs.existsSync(logoPath)) {
+      doc.image(logoPath, doc.page.width - 60 - 100, 40, { width: 100, align: 'right' });
+    }
+
+    // En-tête association (texte à gauche)
+    doc.fontSize(11).font('Helvetica-Bold').text('Association Au Cœur De La Précarité', 60, 60, { align: 'left' });
     doc.fontSize(10).font('Helvetica').text('8 rue de l\'Equerre 95310 Saint Ouen L\'Aumône');
     doc.text('Téléphone : 01 41 68 28 63');
     doc.text('Email : ressources-humaines@aucoeurdelaprecarite.com');
@@ -1661,7 +1670,23 @@ router.get('/attestation', authMiddleware, async (req, res) => {
     doc.moveDown(2);
     doc.text(`Fait à Saint Ouen L'Aumône, le ${formatDate(today)}`);
 
-    doc.moveDown(2);
+    // Image de signature
+    const signaturePath = path.join(__dirname, '../assets/images/signatures/acdlp_signature.png');
+    if (fs.existsSync(signaturePath)) {
+      try {
+        doc.moveDown(1);
+        const sigY = doc.y;
+        const sigWidth = 150;
+        const sigHeight = 70;
+        doc.image(signaturePath, 60, sigY, { width: sigWidth, height: sigHeight });
+        doc.y = sigY + sigHeight + 10;
+      } catch (e) {
+        console.error('[attestation] erreur image signature:', e.message);
+      }
+    } else {
+      doc.moveDown(2);
+    }
+
     doc.font('Helvetica-Bold').text('Umaran RANA – Responsable du pôle ressources humaines');
 
     doc.end();
@@ -1669,7 +1694,14 @@ router.get('/attestation', authMiddleware, async (req, res) => {
     await new Promise((resolve) => doc.on('end', resolve));
 
     const pdfBuffer = Buffer.concat(chunks);
-    const filename = `attestation_benevole_${dateGeneration}.pdf`;
+    const filename = `attestation_benevole_${benevoleId}_${date_debut}_${date_fin}_${dateGeneration}.pdf`;
+
+    // Sauvegarde du PDF sur le serveur
+    const attestationsDir = path.join(__dirname, '../pdf/attestations');
+    if (!fs.existsSync(attestationsDir)) {
+      fs.mkdirSync(attestationsDir, { recursive: true });
+    }
+    fs.writeFileSync(path.join(attestationsDir, filename), pdfBuffer);
 
     res.set({
       'Content-Type': 'application/pdf',
@@ -1681,6 +1713,151 @@ router.get('/attestation', authMiddleware, async (req, res) => {
   } catch (error) {
     console.error('[GET /api/attestation] Erreur:', error);
     return res.status(500).json({ success: false, message: 'Erreur lors de la génération de l\'attestation' });
+  }
+});
+
+/**
+ * GET /api/validations-en-attente
+ * Retourne toutes les inscriptions au statut "inscrit" (présence non encore validée),
+ * groupées par date. Réservé aux responsables.
+ */
+router.get('/validations-en-attente', authMiddleware, async (req, res) => {
+  try {
+    const user = await db.select('SELECT type FROM benevoles_users WHERE id = ?', [req.user.id]);
+    if (!user || user[0]?.type !== 'responsable') {
+      return res.status(403).json({ success: false, message: 'Accès réservé aux responsables' });
+    }
+
+    const userInfo = await db.select('SELECT email FROM benevoles_users WHERE id = ?', [req.user.id]);
+    const userEmail = userInfo[0]?.email;
+
+    // Inclure les actions dont l'utilisateur est responsable par défaut (responsable_email)
+    // OU les occurrences où il est désigné responsable (is_responsable = 1)
+    const rows = await db.select(
+      `SELECT ba.id AS inscription_id,
+              ba.benevole_id,
+              ba.date_action,
+              ba.statut,
+              a.id AS action_id,
+              a.nom AS action_nom,
+              a.heure_debut,
+              a.heure_fin,
+              bu.prenom,
+              bu.nom,
+              bu.email,
+              bu.telephone
+       FROM Benevoles_Actions ba
+       JOIN actions a ON ba.action_id = a.id
+       JOIN benevoles_users bu ON ba.benevole_id = bu.id
+       WHERE ba.statut = 'inscrit'
+         AND (
+           a.responsable_email = ?
+           OR EXISTS (
+             SELECT 1 FROM Benevoles_Actions resp
+             WHERE resp.action_id = ba.action_id
+               AND resp.date_action = ba.date_action
+               AND resp.benevole_id = ?
+               AND resp.is_responsable = 1
+           )
+         )
+       ORDER BY ba.date_action ASC, a.heure_debut ASC, bu.nom ASC`,
+      [userEmail, req.user.id]
+    );
+
+    // Grouper par date
+    const grouped = {};
+    for (const row of rows) {
+      const date = row.date_action instanceof Date
+        ? row.date_action.toISOString().split('T')[0]
+        : String(row.date_action).split('T')[0];
+      if (!grouped[date]) grouped[date] = [];
+      grouped[date].push({
+        inscription_id: row.inscription_id,
+        benevole_id: row.benevole_id,
+        prenom: row.prenom,
+        nom: row.nom,
+        email: row.email,
+        telephone: row.telephone,
+        action_id: row.action_id,
+        action_nom: row.action_nom,
+        heure_debut: row.heure_debut ? row.heure_debut.substring(0, 5) : '',
+        heure_fin: row.heure_fin ? row.heure_fin.substring(0, 5) : '',
+        statut: row.statut
+      });
+    }
+
+    const result = Object.entries(grouped).map(([date, inscriptions]) => ({ date, inscriptions }));
+    return res.json({ success: true, data: result });
+  } catch (error) {
+    console.error('[GET /api/validations-en-attente] Erreur:', error);
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+/**
+ * GET /api/attestations
+ * Liste les attestations PDF sauvegardées pour le bénévole connecté.
+ */
+router.get('/attestations', authMiddleware, async (req, res) => {
+  try {
+    const benevoleId = req.user.id;
+    const fs = require('fs');
+    const path = require('path');
+
+    const attestationsDir = path.join(__dirname, '../pdf/attestations');
+    if (!fs.existsSync(attestationsDir)) {
+      return res.json({ success: true, attestations: [] });
+    }
+
+    const prefix = `attestation_benevole_${benevoleId}_`;
+    const files = fs.readdirSync(attestationsDir)
+      .filter(f => f.startsWith(prefix) && f.endsWith('.pdf'))
+      .map(filename => {
+        const parts = filename.replace('attestation_benevole_', '').replace('.pdf', '').split('_');
+        // format: {benevoleId}_{date_debut}_{date_fin}_{dateGeneration}
+        const dateGeneration = parts[parts.length - 1];
+        const dateFin = parts[parts.length - 2];
+        const dateDebut = parts[parts.length - 3];
+        return { filename, date_debut: dateDebut, date_fin: dateFin, date_generation: dateGeneration };
+      })
+      .sort((a, b) => b.date_generation.localeCompare(a.date_generation));
+
+    return res.json({ success: true, attestations: files });
+  } catch (error) {
+    console.error('[GET /api/attestations] Erreur:', error);
+    return res.status(500).json({ success: false, message: 'Erreur lors de la récupération des attestations' });
+  }
+});
+
+/**
+ * GET /api/attestations/:filename
+ * Télécharge une attestation sauvegardée (appartenant au bénévole connecté).
+ */
+router.get('/attestations/:filename', authMiddleware, async (req, res) => {
+  try {
+    const benevoleId = req.user.id;
+    const { filename } = req.params;
+    const fs = require('fs');
+    const path = require('path');
+
+    // Sécurité : vérifier que le fichier appartient bien au bénévole connecté et pas de path traversal
+    if (!/^attestation_benevole_[\w-]+\.pdf$/.test(filename) || !filename.includes(`_${benevoleId}_`)) {
+      return res.status(403).json({ success: false, message: 'Accès refusé' });
+    }
+
+    const filePath = path.join(__dirname, '../pdf/attestations', filename);
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ success: false, message: 'Attestation introuvable' });
+    }
+
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="${filename}"`
+    });
+    return res.sendFile(filePath);
+  } catch (error) {
+    console.error('[GET /api/attestations/:filename] Erreur:', error);
+    return res.status(500).json({ success: false, message: 'Erreur lors du téléchargement' });
   }
 });
 

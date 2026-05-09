@@ -15,6 +15,32 @@ import {
   SwitchResponsableResponse
 } from '../models/action.model';
 
+export interface PendingValidationItem {
+  inscription_id: number;
+  benevole_id: number;
+  prenom: string;
+  nom: string;
+  email: string;
+  telephone?: string;
+  action_id: number;
+  action_nom: string;
+  heure_debut: string;
+  heure_fin: string;
+  statut: string;
+}
+
+export interface PendingValidationDay {
+  date: string;
+  inscriptions: PendingValidationItem[];
+}
+
+export interface AttestationInfo {
+  filename: string;
+  date_debut: string;
+  date_fin: string;
+  date_generation: string;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -574,6 +600,25 @@ export class ActionService {
   generateAttestation(dateDebut: string, dateFin: string): Observable<Blob> {
     return this.http.get(`${this.apiUrl}/attestation`, {
       params: { date_debut: dateDebut, date_fin: dateFin },
+      responseType: 'blob',
+      withCredentials: true
+    });
+  }
+
+  getPendingValidations(): Observable<{ success: boolean; data: PendingValidationDay[] }> {
+    return this.http.get<{ success: boolean; data: PendingValidationDay[] }>(`${this.apiUrl}/validations-en-attente`, {
+      withCredentials: true
+    });
+  }
+
+  listAttestations(): Observable<{ success: boolean; attestations: AttestationInfo[] }> {
+    return this.http.get<{ success: boolean; attestations: AttestationInfo[] }>(`${this.apiUrl}/attestations`, {
+      withCredentials: true
+    });
+  }
+
+  downloadAttestation(filename: string): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}/attestations/${encodeURIComponent(filename)}`, {
       responseType: 'blob',
       withCredentials: true
     });

@@ -1,7 +1,7 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ActionService } from '../../services/action.service';
+import { ActionService, AttestationInfo } from '../../services/action.service';
 
 interface ActionBloquante {
   nom: string;
@@ -17,17 +17,38 @@ interface ActionBloquante {
   templateUrl: './volunteer-attestation.component.html',
   styleUrls: ['./volunteer-attestation.component.scss']
 })
-export class VolunteerAttestationComponent {
+export class VolunteerAttestationComponent implements OnInit {
   dateDebut = '';
   dateFin = '';
   loading = false;
   actionsBloquantes: ActionBloquante[] = [];
   erreurGenerale = '';
 
+  attestations: AttestationInfo[] = [];
+  loadingAttestations = false;
+  downloadingFilename = '';
+
   constructor(private actionService: ActionService) {}
+
+  ngOnInit(): void {
+    this.chargerAttestations();
+  }
 
   get canGenerate(): boolean {
     return !!this.dateDebut && !!this.dateFin && this.dateDebut <= this.dateFin;
+  }
+
+  chargerAttestations(): void {
+    this.loadingAttestations = true;
+    this.actionService.listAttestations().subscribe({
+      next: (res) => {
+        this.attestations = res.attestations || [];
+        this.loadingAttestations = false;
+      },
+      error: () => {
+        this.loadingAttestations = false;
+      }
+    });
   }
 
   generer(): void {
@@ -50,6 +71,7 @@ export class VolunteerAttestationComponent {
         a.click();
         document.body.removeChild(a);
         window.URL.revokeObjectURL(url);
+        this.chargerAttestations();
       },
       error: (err) => {
         this.loading = false;
@@ -79,8 +101,33 @@ export class VolunteerAttestationComponent {
     });
   }
 
+  telecharger(attestation: AttestationInfo): void {
+    this.downloadingFilename = attestation.filename;
+    this.actionService.downloadAttestation(attestation.filename).subscribe({
+      next: (blob) => {
+        this.downloadingFilename = '';
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = attestation.filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      },
+      error: () => {
+        this.downloadingFilename = '';
+      }
+    });
+  }
+
   formatDate(dateStr: string): string {
     const d = new Date(dateStr);
     return d.toLocaleDateString('fr-FR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+  }
+
+  formatDateCourt(dateStr: string): string {
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
   }
 }

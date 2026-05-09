@@ -76,3 +76,60 @@
   </div>
 
 </div>
+
+<!-- Liste des attestations générées -->
+<div class="max-w-lg mt-10">
+  <h2 class="text-lg font-semibold text-gray-800 mb-3">Attestations générées</h2>
+
+  <!-- Chargement -->
+  <div *ngIf="loadingAttestations" class="flex items-center gap-2 text-sm text-gray-500">
+    <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+    </svg>
+    Chargement...
+  </div>
+
+  <!-- Aucune attestation -->
+  <div *ngIf="!loadingAttestations && attestations.length === 0" class="text-sm text-gray-400 italic">
+    Aucune attestation générée pour l'instant.
+  </div>
+
+  <!-- Tableau des attestations -->
+  <div *ngIf="!loadingAttestations && attestations.length > 0" class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+    <table class="w-full text-sm">
+      <thead class="bg-gray-50 border-b border-gray-200">
+        <tr>
+          <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Période</th>
+          <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Générée le</th>
+          <th class="px-4 py-3"></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        <tr *ngFor="let a of attestations" class="hover:bg-gray-50 transition-colors">
+          <td class="px-4 py-3 text-gray-700">
+            {{ formatDateCourt(a.date_debut) }} – {{ formatDateCourt(a.date_fin) }}
+          </td>
+          <td class="px-4 py-3 text-gray-500">
+            {{ formatDateCourt(a.date_generation) }}
+          </td>
+          <td class="px-4 py-3 text-right">
+            <button
+              (click)="telecharger(a)"
+              [disabled]="downloadingFilename === a.filename"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-primary border border-primary rounded-lg hover:bg-primary/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+              <svg *ngIf="downloadingFilename !== a.filename" class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+              </svg>
+              <svg *ngIf="downloadingFilename === a.filename" class="animate-spin h-3.5 w-3.5" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+              </svg>
+              Télécharger
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
