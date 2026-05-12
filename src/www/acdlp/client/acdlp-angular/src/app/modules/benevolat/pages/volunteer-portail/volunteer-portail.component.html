@@ -1,0 +1,76 @@
+<!-- En-tête -->
+<div class="mb-8">
+  <h1 class="text-2xl font-bold text-gray-900">Ouverture du portail</h1>
+  <p class="mt-1 text-sm text-gray-500">Déclenche l'ouverture du portail d'Épinay via un appel téléphonique automatique</p>
+</div>
+
+<div class="max-w-sm mx-auto">
+
+  <!-- Carte principale -->
+  <div class="bg-white border border-gray-200 rounded-2xl shadow-sm p-8 flex flex-col items-center gap-6">
+
+    <!-- Icône portail -->
+    <div class="w-20 h-20 rounded-full flex items-center justify-center transition-colors duration-300"
+         [ngClass]="{
+           'bg-gray-100': state === 'idle' || state === 'loading',
+           'bg-green-100': state === 'success',
+           'bg-red-100': state === 'error',
+           'bg-amber-100': state === 'cooldown'
+         }">
+      <!-- Idle / cooldown : cadenas -->
+      <svg *ngIf="state === 'idle' || state === 'cooldown'" class="h-9 w-9"
+           [ngClass]="state === 'cooldown' ? 'text-amber-500' : 'text-gray-400'"
+           fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+              d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"></path>
+      </svg>
+      <!-- Loading : spinner -->
+      <svg *ngIf="state === 'loading'" class="animate-spin h-9 w-9 text-primary" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+      </svg>
+      <!-- Succès : check -->
+      <svg *ngIf="state === 'success'" class="h-9 w-9 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+      </svg>
+      <!-- Erreur : X -->
+      <svg *ngIf="state === 'error'" class="h-9 w-9 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+      </svg>
+    </div>
+
+    <!-- Message de statut -->
+    <div class="text-center">
+      <p *ngIf="state === 'idle'" class="text-sm text-gray-500">Appuyez sur le bouton pour ouvrir le portail</p>
+      <p *ngIf="state === 'loading'" class="text-sm text-gray-500">Appel en cours...</p>
+      <p *ngIf="state === 'success'" class="text-sm font-semibold text-green-700">{{ message }}</p>
+      <p *ngIf="state === 'error'" class="text-sm font-medium text-red-700">{{ message }}</p>
+      <p *ngIf="cooldownRemaining > 0" class="mt-1 text-xs text-gray-400">
+        Disponible dans {{ cooldownRemaining }}s
+      </p>
+    </div>
+
+    <!-- Bouton principal -->
+    <button
+      (click)="ouvrir()"
+      [disabled]="isDisabled"
+      class="w-full py-3 px-6 rounded-xl text-sm font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+      [ngClass]="{
+        'bg-primary text-white hover:bg-primary/90': state === 'idle' || state === 'error',
+        'bg-gray-200 text-gray-400': state === 'loading' || state === 'cooldown',
+        'bg-green-500 text-white hover:bg-green-600': state === 'success' && cooldownRemaining > 0
+      }">
+      <span *ngIf="state !== 'loading'">
+        {{ state === 'success' && cooldownRemaining > 0 ? 'Portail ouvert !' : 'Ouvrir le portail' }}
+      </span>
+      <span *ngIf="state === 'loading'">Ouverture en cours...</span>
+    </button>
+
+  </div>
+
+  <!-- Info -->
+  <p class="mt-4 text-center text-xs text-gray-400">
+    Un appel téléphonique automatique est déclenché vers le portail d'Épinay.
+  </p>
+
+</div>

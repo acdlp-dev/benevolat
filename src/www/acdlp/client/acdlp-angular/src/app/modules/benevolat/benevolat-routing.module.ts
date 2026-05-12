@@ -12,6 +12,10 @@ import { VolunteerEmailStepComponent } from './pages/volunteer-email-step/volunt
 import { VolunteerOtpVerificationComponent } from './pages/volunteer-otp-verification/volunteer-otp-verification.component';
 import { VolunteerCompleteSignupComponent } from './pages/volunteer-complete-signup/volunteer-complete-signup.component';
 import { VolunteerProfileComponent } from './pages/volunteer-profile/volunteer-profile.component';
+import { VolunteerMyActionsComponent } from './pages/volunteer-my-actions/volunteer-my-actions.component';
+import { VolunteerAttestationComponent } from './pages/volunteer-attestation/volunteer-attestation.component';
+import { VolunteerPendingValidationsComponent } from './pages/volunteer-pending-validations/volunteer-pending-validations.component';
+import { VolunteerPortailComponent } from './pages/volunteer-portail/volunteer-portail.component';
 const routes: Routes = [
   {
     path: '',
@@ -62,7 +66,22 @@ const routes: Routes = [
         path: 'profile',
         component: VolunteerProfileComponent
       },
-      
+      {
+        path: 'mes-actions',
+        component: VolunteerMyActionsComponent
+      },
+      {
+        path: 'attestation',
+        component: VolunteerAttestationComponent
+      },
+      {
+        path: 'validations-en-attente',
+        component: VolunteerPendingValidationsComponent
+      },
+      {
+        path: 'portail',
+        component: VolunteerPortailComponent
+      },
     ]
   }
 ];

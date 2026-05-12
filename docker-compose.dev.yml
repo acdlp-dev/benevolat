@@ -48,7 +48,9 @@ services:
       - "./src/www/acdlp/server/node:/usr/src/app"
       - "./.env:/usr/src/app/.env"
       - "./src/www/acdlp/server/node/pdf/recuFiscal:/usr/src/app/pdf/recuFiscal"
+      - "attestations-data:/usr/src/app/pdf/attestations"
       - "./src/www/acdlp/client/acdlp-angular/src/assets:/usr/src/app/assets"
+      - "./docs:/usr/src/app/docs:ro"
       - "logs-data:/var/log/acdlp"
     ports:
       - "4242:4242"
@@ -174,3 +176,4 @@ volumes:
   logs-data:
   loki-data:
   grafana-data:
+  attestations-data:

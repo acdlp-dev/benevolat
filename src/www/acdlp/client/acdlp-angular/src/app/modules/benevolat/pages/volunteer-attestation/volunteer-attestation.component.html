@@ -1,0 +1,135 @@
+<!-- En-tête -->
+<div class="mb-6">
+  <h1 class="text-2xl font-bold text-gray-900">Attestation bénévole</h1>
+  <p class="mt-1 text-sm text-gray-500">Générez votre attestation de bénévolat en PDF pour une période donnée</p>
+</div>
+
+<div class="max-w-lg">
+
+  <!-- Formulaire sélection de dates -->
+  <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm space-y-5">
+
+    <div>
+      <label for="dateDebut" class="block text-sm font-medium text-gray-700 mb-1">Date de début</label>
+      <input
+        id="dateDebut"
+        type="date"
+        [(ngModel)]="dateDebut"
+        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" />
+    </div>
+
+    <div>
+      <label for="dateFin" class="block text-sm font-medium text-gray-700 mb-1">Date de fin</label>
+      <input
+        id="dateFin"
+        type="date"
+        [(ngModel)]="dateFin"
+        [min]="dateDebut"
+        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent" />
+    </div>
+
+    <button
+      (click)="generer()"
+      [disabled]="!canGenerate || loading"
+      class="w-full inline-flex justify-center items-center gap-2 px-4 py-2.5 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+      <svg *ngIf="!loading" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+      </svg>
+      <svg *ngIf="loading" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+      </svg>
+      {{ loading ? 'Génération en cours...' : 'Télécharger l\'attestation PDF' }}
+    </button>
+  </div>
+
+  <!-- Erreur blocage : présences non validées -->
+  <div *ngIf="actionsBloquantes.length > 0" class="mt-5 bg-amber-50 border border-amber-200 rounded-xl p-5">
+    <div class="flex items-start gap-3">
+      <svg class="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"></path>
+      </svg>
+      <div class="flex-1">
+        <p class="text-sm font-semibold text-amber-800">Présences non validées</p>
+        <p class="mt-1 text-sm text-amber-700">
+          Les actions suivantes sont encore à l'état "inscrit" sur cette période. Veuillez demander à votre responsable de valider votre présence pour ces jours.
+        </p>
+        <ul class="mt-3 space-y-2">
+          <li *ngFor="let a of actionsBloquantes" class="flex items-center gap-2 text-sm text-amber-800">
+            <svg class="h-4 w-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+            </svg>
+            <span class="font-medium">{{ a.nom }}</span>
+            <span class="text-amber-600">— {{ formatDate(a.date) }} · {{ a.heure_debut }}–{{ a.heure_fin }}</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Erreur générale -->
+  <div *ngIf="erreurGenerale" class="mt-5 bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
+    <svg class="h-5 w-5 text-red-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+    </svg>
+    <p class="text-sm text-red-700">{{ erreurGenerale }}</p>
+  </div>
+
+</div>
+
+<!-- Liste des attestations générées -->
+<div class="max-w-lg mt-10">
+  <h2 class="text-lg font-semibold text-gray-800 mb-3">Attestations générées</h2>
+
+  <!-- Chargement -->
+  <div *ngIf="loadingAttestations" class="flex items-center gap-2 text-sm text-gray-500">
+    <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+    </svg>
+    Chargement...
+  </div>
+
+  <!-- Aucune attestation -->
+  <div *ngIf="!loadingAttestations && attestations.length === 0" class="text-sm text-gray-400 italic">
+    Aucune attestation générée pour l'instant.
+  </div>
+
+  <!-- Tableau des attestations -->
+  <div *ngIf="!loadingAttestations && attestations.length > 0" class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+    <table class="w-full text-sm">
+      <thead class="bg-gray-50 border-b border-gray-200">
+        <tr>
+          <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Période</th>
+          <th class="text-left px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wide">Générée le</th>
+          <th class="px-4 py-3"></th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-100">
+        <tr *ngFor="let a of attestations" class="hover:bg-gray-50 transition-colors">
+          <td class="px-4 py-3 text-gray-700">
+            {{ formatDateCourt(a.date_debut) }} – {{ formatDateCourt(a.date_fin) }}
+          </td>
+          <td class="px-4 py-3 text-gray-500">
+            {{ formatDateCourt(a.date_generation) }}
+          </td>
+          <td class="px-4 py-3 text-right">
+            <button
+              (click)="telecharger(a)"
+              [disabled]="downloadingFilename === a.filename"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-primary border border-primary rounded-lg hover:bg-primary/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+              <svg *ngIf="downloadingFilename !== a.filename" class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+              </svg>
+              <svg *ngIf="downloadingFilename === a.filename" class="animate-spin h-3.5 w-3.5" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+              </svg>
+              Télécharger
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

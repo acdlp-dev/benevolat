@@ -19,7 +19,7 @@
       <div class="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
         <div class="flex items-center justify-between px-4 mb-4">
           <div class="flex items-center gap-3">
-            <img src="assets/images/logo.png" alt="Au Coeur De La Précarité" class="h-10" />
+            <img src="assets/images/au-coeur-de-la-precarite.png" alt="Au Coeur De La Précarité" class="h-10" />
             <h2 class="text-lg font-medium text-gray-900">Espace Bénévole</h2>
           </div>
           <button 
@@ -33,14 +33,34 @@
         
         <!-- Navigation mobile -->
         <nav class="mt-4 flex-1 px-2 space-y-1">
-          <a routerLink="/dashboard/actions" 
+          <a routerLink="/dashboard/actions"
              routerLinkActive="bg-primary text-white"
              (click)="closeMobileSidebar()"
              class="group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900">
             <svg class="mr-3 h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3a4 4 0 118 0v4m-4 0h4l2 7H6l2-7z"></path>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+            </svg>
+            Calendrier
+          </a>
+
+          <a routerLink="/dashboard/mes-actions"
+             routerLinkActive="bg-primary text-white"
+             (click)="closeMobileSidebar()"
+             class="group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900">
+            <svg class="mr-3 h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
             </svg>
             Mes actions
+          </a>
+
+          <a routerLink="/dashboard/attestation"
+             routerLinkActive="bg-primary text-white"
+             (click)="closeMobileSidebar()"
+             class="group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900">
+            <svg class="mr-3 h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+            Attestation bénévole
           </a>
 
           <a routerLink="/dashboard/profile"
@@ -60,9 +80,18 @@
                 Outils Responsable
               </span>
             </div>
-            
-            <a href="https://portail.acdlp.fr"
-               target="_blank"
+
+            <a routerLink="/dashboard/validations-en-attente"
+               routerLinkActive="bg-primary text-white"
+               class="group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900">
+              <svg class="mr-3 h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 8l2 2 4-4"></path>
+              </svg>
+              Validations en attente
+            </a>
+
+            <a routerLink="/dashboard/portail"
+               routerLinkActive="bg-primary text-white"
                class="group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900">
               <svg class="mr-3 h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"></path>
@@ -116,22 +145,40 @@
       <!-- Header sidebar -->
       <div class="flex-1 flex flex-col pt-5 pb-4 overflow-y-auto">
         <div class="flex items-center flex-shrink-0 px-4 gap-3">
-          <img src="assets/images/logo.png" alt="Au Coeur De La Précarité" class="h-10" />
+          <img src="assets/images/au-coeur-de-la-precarite.png" alt="Au Coeur De La Précarité" class="h-10" />
           <h2 class="text-lg font-medium text-gray-900">Espace Bénévole</h2>
         </div>
         
         <!-- Navigation -->
         <nav class="mt-8 flex-1 px-2 space-y-1">
-          <a routerLink="/dashboard/actions" 
+          <a routerLink="/dashboard/actions"
              routerLinkActive="bg-primary text-white"
              class="group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900">
             <svg class="mr-3 h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3a4 4 0 118 0v4m-4 0h4l2 7H6l2-7z"></path>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+            </svg>
+            Calendrier
+          </a>
+
+          <a routerLink="/dashboard/mes-actions"
+             routerLinkActive="bg-primary text-white"
+             class="group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900">
+            <svg class="mr-3 h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
             </svg>
             Mes actions
           </a>
 
-          <a routerLink="/dashboard/profile" 
+          <a routerLink="/dashboard/attestation"
+             routerLinkActive="bg-primary text-white"
+             class="group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900">
+            <svg class="mr-3 h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+            Attestation bénévole
+          </a>
+
+          <a routerLink="/dashboard/profile"
              routerLinkActive="bg-primary text-white"
              class="group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900">
             <svg class="mr-3 h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -147,10 +194,19 @@
                 Outils Responsable
               </span>
             </div>
-            
+
+            <a routerLink="/dashboard/validations-en-attente"
+               routerLinkActive="bg-primary text-white"
+               class="group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900">
+              <svg class="mr-3 h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 8l2 2 4-4"></path>
+              </svg>
+              Validations en attente
+            </a>
+
             <!-- Bouton Ouverture Portail -->
-            <a href="https://portail.acdlp.fr"
-               target="_blank"
+            <a routerLink="/dashboard/portail"
+               routerLinkActive="bg-primary text-white"
                class="group flex items-center px-2 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-50 hover:text-gray-900">
               <svg class="mr-3 h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"></path>
@@ -215,7 +271,7 @@
       </button>
       <div class="flex-1 px-4 flex justify-between">
         <div class="flex-1 flex items-center">
-          <img src="assets/images/logo.png" alt="Au Coeur De La Précarité" class="h-8 ml-4" />
+          <img src="assets/images/au-coeur-de-la-precarite.png" alt="Au Coeur De La Précarité" class="h-8 ml-4" />
           <h1 class="ml-3 text-lg font-medium text-gray-900">Espace Bénévole</h1>
         </div>
       </div>

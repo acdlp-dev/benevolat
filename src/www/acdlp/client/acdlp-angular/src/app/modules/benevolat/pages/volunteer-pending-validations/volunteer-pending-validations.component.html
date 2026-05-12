@@ -1,0 +1,128 @@
+<!-- En-tête -->
+<div class="mb-6 flex items-center justify-between">
+  <div>
+    <h1 class="text-2xl font-bold text-gray-900">Validations en attente</h1>
+    <p class="mt-1 text-sm text-gray-500">
+      Bénévoles inscrits dont la présence n'a pas encore été validée
+    </p>
+  </div>
+  <button
+    (click)="charger()"
+    [disabled]="loading"
+    class="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50">
+    <svg class="h-4 w-4" [class.animate-spin]="loading" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+    </svg>
+    Actualiser
+  </button>
+</div>
+
+<!-- Erreur -->
+<div *ngIf="erreur" class="mb-4 bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
+  <svg class="h-5 w-5 text-red-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+  </svg>
+  <p class="text-sm text-red-700">{{ erreur }}</p>
+</div>
+
+<!-- Chargement -->
+<div *ngIf="loading" class="flex items-center justify-center py-16 text-gray-400">
+  <svg class="animate-spin h-6 w-6 mr-3" fill="none" viewBox="0 0 24 24">
+    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+  </svg>
+  Chargement...
+</div>
+
+<!-- Aucune validation en attente -->
+<div *ngIf="!loading && days.length === 0" class="flex flex-col items-center justify-center py-16 text-center">
+  <svg class="h-12 w-12 text-green-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+  </svg>
+  <p class="text-gray-500 font-medium">Tout est à jour !</p>
+  <p class="text-sm text-gray-400 mt-1">Aucune présence en attente de validation.</p>
+</div>
+
+<!-- Compteur -->
+<div *ngIf="!loading && days.length > 0" class="mb-4">
+  <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+    {{ total }} présence{{ total > 1 ? 's' : '' }} en attente
+  </span>
+</div>
+
+<!-- Liste groupée par jour -->
+<div *ngIf="!loading && days.length > 0" class="space-y-6">
+  <div *ngFor="let day of days">
+
+    <!-- En-tête du jour -->
+    <div class="flex items-center gap-3 mb-2">
+      <div class="flex items-center gap-2">
+        <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+        </svg>
+        <span class="text-sm font-semibold text-gray-700 capitalize">{{ formatDate(day.date) }}</span>
+      </div>
+      <span class="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+        {{ day.inscriptions.length }} bénévole{{ day.inscriptions.length > 1 ? 's' : '' }}
+      </span>
+    </div>
+
+    <!-- Carte bénévoles du jour -->
+    <div class="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+      <div class="divide-y divide-gray-100">
+        <div *ngFor="let item of day.inscriptions"
+             class="flex items-center gap-4 px-4 py-3"
+             [class.opacity-50]="updatingId === item.inscription_id">
+
+          <!-- Infos bénévole + action -->
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="text-sm font-semibold text-gray-900">{{ item.prenom }} {{ item.nom }}</span>
+              <span class="text-xs text-gray-400">·</span>
+              <span class="text-xs text-gray-500 truncate">{{ item.email }}</span>
+              <ng-container *ngIf="item.telephone">
+                <span class="text-xs text-gray-400">·</span>
+                <span class="text-xs text-gray-500">{{ item.telephone }}</span>
+              </ng-container>
+            </div>
+            <div class="mt-0.5 flex items-center gap-1.5 text-xs text-gray-500">
+              <svg class="h-3.5 w-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              <span class="font-medium text-gray-700">{{ item.action_nom }}</span>
+              <span>{{ item.heure_debut }}–{{ item.heure_fin }}</span>
+            </div>
+          </div>
+
+          <!-- Boutons de validation -->
+          <div class="flex items-center gap-2 flex-shrink-0">
+            <button
+              (click)="valider(item, 'présent')"
+              [disabled]="updatingId === item.inscription_id"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-lg hover:bg-green-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+              <svg *ngIf="updatingId !== item.inscription_id" class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              <svg *ngIf="updatingId === item.inscription_id" class="animate-spin h-3.5 w-3.5" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+              </svg>
+              Présent
+            </button>
+            <button
+              (click)="valider(item, 'absent')"
+              [disabled]="updatingId === item.inscription_id"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+              <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+              Absent
+            </button>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
