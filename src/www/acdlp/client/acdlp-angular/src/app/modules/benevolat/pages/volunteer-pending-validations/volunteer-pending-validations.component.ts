@@ -26,7 +26,9 @@ export class VolunteerPendingValidationsComponent implements OnInit {
     this.erreur = '';
     this.actionService.getPendingValidations().subscribe({
       next: (res) => {
-        this.days = res.data || [];
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        this.days = (res.data || []).filter((d: PendingValidationDay) => new Date(d.date) <= today);
         this.loading = false;
       },
       error: () => {
