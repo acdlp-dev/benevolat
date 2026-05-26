@@ -15,6 +15,13 @@ import {
   SwitchResponsableResponse
 } from '../models/action.model';
 
+export interface AcdlpAction {
+  id: number;
+  nom: string;
+  categorie: string;
+  quantite_acdlp: number;
+}
+
 export interface PendingValidationItem {
   inscription_id: number;
   benevole_id: number;
@@ -608,6 +615,21 @@ export class ActionService {
   ouvrirPortail(): Observable<{ success: boolean; message: string; callId?: string }> {
     return this.http.post<{ success: boolean; message: string; callId?: string }>(
       `${this.apiUrl}/portail/ouvrir`, {},
+      { withCredentials: true }
+    );
+  }
+
+  getAcdlpQuantites(): Observable<{ success: boolean; actions: AcdlpAction[] }> {
+    return this.http.get<{ success: boolean; actions: AcdlpAction[] }>(
+      `${this.apiUrl}/acdlp-quantites`,
+      { withCredentials: true }
+    );
+  }
+
+  updateAcdlpQuantite(id: number, quantite_acdlp: number): Observable<{ success: boolean; message: string; commandes_updated: number }> {
+    return this.http.put<{ success: boolean; message: string; commandes_updated: number }>(
+      `${this.apiUrl}/acdlp-quantites/${id}`,
+      { quantite_acdlp },
       { withCredentials: true }
     );
   }

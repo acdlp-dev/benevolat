@@ -1,0 +1,68 @@
+<div class="min-h-screen bg-gray-50 py-8 px-4">
+  <div class="max-w-2xl mx-auto">
+    <h1 class="text-2xl font-bold text-gray-900 mb-2">Modification des quantités</h1>
+    <p class="text-sm text-gray-500 mb-6">
+      Mettez à jour le nombre de repas prévus pour vos actions ACDLP.
+    </p>
+
+    <!-- Succès global -->
+    <div *ngIf="globalSuccess" class="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg text-green-800 text-sm">
+      {{ globalSuccess }}
+    </div>
+
+    <!-- Erreur -->
+    <div *ngIf="error" class="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm">
+      {{ error }}
+    </div>
+
+    <!-- Chargement -->
+    <div *ngIf="isLoading" class="flex justify-center py-16">
+      <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-red-600"></div>
+    </div>
+
+    <!-- Aucune action -->
+    <div *ngIf="!isLoading && actions.length === 0 && !error"
+         class="text-center py-16 text-gray-500">
+      Vous n'avez aucune action ACDLP à gérer pour le moment.
+    </div>
+
+    <!-- Liste des actions -->
+    <div *ngIf="!isLoading && actions.length > 0" class="space-y-4">
+      <div *ngFor="let action of actions"
+           class="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <p class="font-semibold text-gray-900">{{ action.nom }}</p>
+            <p class="text-sm text-gray-500 mt-0.5">{{ action.categorie }}</p>
+          </div>
+          <div class="flex items-center gap-3 shrink-0">
+            <div class="text-right">
+              <label class="block text-xs text-gray-500 mb-1">Repas</label>
+              <input type="number"
+                     [(ngModel)]="action._editQty"
+                     min="0"
+                     class="w-24 text-right px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-600/20 focus:border-red-600 transition-colors text-sm" />
+            </div>
+            <div class="pt-5">
+              <button (click)="save(action)"
+                      [disabled]="action._saving || action._editQty === action.quantite_acdlp"
+                      class="px-4 py-2 text-sm font-medium rounded-lg transition-colors"
+                      [ngClass]="{
+                        'bg-green-500 text-white': action._saved,
+                        'bg-red-600 text-white hover:bg-red-700': !action._saved && action._editQty !== action.quantite_acdlp,
+                        'bg-gray-100 text-gray-400 cursor-not-allowed': action._editQty === action.quantite_acdlp && !action._saved
+                      }">
+                <span *ngIf="action._saving">...</span>
+                <span *ngIf="!action._saving && action._saved">✓</span>
+                <span *ngIf="!action._saving && !action._saved">Enregistrer</span>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div *ngIf="action._error" class="mt-2 text-xs text-red-600">
+          {{ action._error }}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

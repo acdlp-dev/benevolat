@@ -16,6 +16,7 @@ import { VolunteerMyActionsComponent } from './pages/volunteer-my-actions/volunt
 import { VolunteerAttestationComponent } from './pages/volunteer-attestation/volunteer-attestation.component';
 import { VolunteerPendingValidationsComponent } from './pages/volunteer-pending-validations/volunteer-pending-validations.component';
 import { VolunteerPortailComponent } from './pages/volunteer-portail/volunteer-portail.component';
+import { VolunteerQuantitesAcdlpComponent } from './pages/volunteer-quantites-acdlp/volunteer-quantites-acdlp.component';
 const routes: Routes = [
   {
     path: '',
@@ -81,6 +82,10 @@ const routes: Routes = [
       {
         path: 'portail',
         component: VolunteerPortailComponent
+      },
+      {
+        path: 'quantites-acdlp',
+        component: VolunteerQuantitesAcdlpComponent
       },
     ]
   }

@@ -1936,4 +1936,81 @@ router.post('/portail/ouvrir', authMiddleware, async (req, res) => {
   }
 });
 
+/**
+ * GET /api/acdlp-quantites
+ * Retourne les actions ACDLP dont le responsable connecté est en charge
+ */
+router.get('/acdlp-quantites', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const userRows = await db.select('SELECT type, email FROM benevoles_users WHERE id = ?', [userId]);
+    if (!userRows || userRows.length === 0 || userRows[0].type !== 'responsable') {
+      return res.status(403).json({ success: false, message: 'Accès réservé aux responsables' });
+    }
+
+    const email = userRows[0].email;
+    const actions = await db.select(
+      `SELECT id, nom, categorie, quantite_acdlp
+       FROM actions
+       WHERE responsable_email = ?
+         AND categorie IN ('Maraudes', 'Distribution', 'Maraudes petit déjeuner')
+         AND statut = 'actif'
+       ORDER BY categorie, nom`,
+      [email]
+    );
+
+    return res.json({ success: true, actions });
+  } catch (err) {
+    console.error('[ACDLP Quantites GET Error]:', err);
+    return res.status(500).json({ success: false, message: 'Erreur serveur', error: err.message });
+  }
+});
+
+/**
+ * PUT /api/acdlp-quantites/:id
+ * Met à jour la quantité ACDLP d'une action dont le responsable est en charge
+ */
+router.put('/acdlp-quantites/:id', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { id } = req.params;
+    const { quantite_acdlp } = req.body;
+
+    const userRows = await db.select('SELECT type, email FROM benevoles_users WHERE id = ?', [userId]);
+    if (!userRows || userRows.length === 0 || userRows[0].type !== 'responsable') {
+      return res.status(403).json({ success: false, message: 'Accès réservé aux responsables' });
+    }
+
+    if (quantite_acdlp === undefined || isNaN(parseInt(quantite_acdlp))) {
+      return res.status(400).json({ success: false, message: 'quantite_acdlp requis' });
+    }
+
+    const email = userRows[0].email;
+    const actionRows = await db.select(
+      `SELECT id FROM actions WHERE id = ? AND responsable_email = ? AND categorie IN ('Maraudes', 'Distribution', 'Maraudes petit déjeuner')`,
+      [id, email]
+    );
+    if (!actionRows || actionRows.length === 0) {
+      return res.status(403).json({ success: false, message: 'Action introuvable ou accès non autorisé' });
+    }
+
+    const qty = parseInt(quantite_acdlp);
+    await db.update('actions', { quantite_acdlp: qty }, 'id = ?', [id]);
+
+    const updateResult = await db.query(
+      `UPDATE Commandes SET repas_quantite = ?, total_quantite = ? WHERE action_id = ? AND livraison >= CURDATE()`,
+      [qty, qty, id]
+    );
+
+    return res.json({
+      success: true,
+      message: 'Quantité mise à jour',
+      commandes_updated: updateResult.affectedRows
+    });
+  } catch (err) {
+    console.error('[ACDLP Quantite PUT Error]:', err);
+    return res.status(500).json({ success: false, message: 'Erreur serveur', error: err.message });
+  }
+});
+
 module.exports = router;
