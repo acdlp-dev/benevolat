@@ -36,6 +36,9 @@ export class VolunteerActionsComponent implements OnInit {
   showActionModal = false;
   actionInProgress = false;
 
+  // Jour sélectionné sur mobile (vue mois)
+  selectedMobileDay: Date | null = null;
+
   actionParticipants: any[] = [];
   isLoadingParticipants = false;
   isResponsable = false;
@@ -102,6 +105,9 @@ export class VolunteerActionsComponent implements OnInit {
         console.log('[FRONTEND DEBUG] Actions reçues:', actions.length);
         this.actions = actions;
         this.generateCalendar();
+        if (!this.selectedMobileDay) {
+          this.selectedMobileDay = new Date(this.currentYear, this.currentMonth, this.currentDay);
+        }
         this.loading = false;
       },
       error: (error) => {
@@ -800,6 +806,16 @@ export class VolunteerActionsComponent implements OnInit {
     
     // Toutes les autres actions → bleu
     return 'bg-blue-500 text-white';
+  }
+
+  selectMobileDay(date: Date): void {
+    this.selectedMobileDay = date;
+  }
+
+  getActionDotClass(action: CalendarAction): string {
+    return this.isActionInPast(action)
+      ? (action.est_inscrit ? 'bg-gray-400' : 'bg-gray-300')
+      : (action.est_inscrit ? 'bg-green-500' : 'bg-blue-500');
   }
 
   /**
