@@ -1644,7 +1644,7 @@ router.get('/attestation', authMiddleware, async (req, res) => {
     doc.fontSize(11).font('Helvetica-Bold').text('Association Au Cœur De La Précarité', 60, 60, { align: 'left' });
     doc.fontSize(10).font('Helvetica').text('8 rue de l\'Equerre 95310 Saint Ouen L\'Aumône');
     doc.text('Téléphone : 01 41 68 28 63');
-    doc.text('Email : ressources-humaines@aucoeurdelaprecarite.com');
+    doc.text('Email : rh@acdlp.com');
 
     doc.moveDown(2);
 
