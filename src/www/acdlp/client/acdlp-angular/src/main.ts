@@ -30,7 +30,7 @@ function selfXSSWarning() {
       'font-weight:bold; font: 2.5em Arial; color: white; background-color: #e11d48; padding-left: 15px; padding-right: 15px; border-radius: 25px; padding-top: 5px; padding-bottom: 5px;',
     );
     console.log(
-      `\n%cSi tu es développeur, et intéressé pour nous aider fisabiliLlâh, n'hésites pas à nous écrire ici : dsi@aucoeurdelaprecarite.com`,
+      `\n%cSi tu es développeur, et intéressé pour nous aider fisabiliLlâh, n'hésites pas à nous écrire ici : dsi@acdlp.com`,
       'font-weight:bold; font: 2em Arial; color: #e11d48;',
     );
   });
