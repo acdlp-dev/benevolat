@@ -1894,8 +1894,11 @@ router.post('/portail/ouvrir', authMiddleware, async (req, res) => {
 
     const SID = process.env.TWILIO_ACCOUNT_SID;
     const TOKEN = process.env.TWILIO_AUTH_TOKEN;
-    const FROM = process.env.TWILIO_PHONE_NUMBER;
-    const TO = process.env.PORTAIL_PHONE;
+    // Nettoyage : on ne garde que '+' et les chiffres pour éviter qu'un caractère
+    // parasite dans le .env (ex. un '©' collé au numéro) corrompe le caller ID
+    // présenté au module GSM du portail — qui n'ouvrirait alors jamais.
+    const FROM = (process.env.TWILIO_PHONE_NUMBER || '').replace(/[^\d+]/g, '');
+    const TO = (process.env.PORTAIL_PHONE || '').replace(/[^\d+]/g, '');
 
     if (!SID || !TOKEN || !FROM || !TO) {
       await db.insert('portail_logs', {
@@ -1906,20 +1909,30 @@ router.post('/portail/ouvrir', authMiddleware, async (req, res) => {
       return res.status(500).json({ success: false, message: 'Configuration Twilio manquante sur le serveur.' });
     }
 
-    const twiml = '<Response><Say language="fr-FR">Ouverture du portail</Say><Pause length="2"/></Response>';
+    // Faire sonner puis raccrocher (le portail GSM ouvre sur l'identification de l'appelant)
+    const twiml = '<Response><Say language="fr-FR">Ouverture du portail</Say><Hangup/></Response>';
 
     const response = await axios.post(
       `https://api.twilio.com/2010-04-01/Accounts/${SID}/Calls.json`,
-      new URLSearchParams({ To: TO, From: FROM, Twiml: twiml }),
+      new URLSearchParams({ To: TO, From: FROM, Twiml: twiml, Timeout: '20' }),
       { auth: { username: SID, password: TOKEN } }
     );
 
     const callId = response.data?.sid || null;
+    const callStatus = response.data?.status || null;
+    // Twilio renvoie 'queued'/'initiated'/'ringing'/'in-progress' à la création ;
+    // 'failed'/'canceled' = l'appel n'aboutira pas → ne pas logger un faux 'success'.
+    const isFailure = ['failed', 'canceled'].includes(callStatus);
     await db.insert('portail_logs', {
       ouvert_par_id: req.user.id, ouvert_par_nom: `${prenom} ${nom}`, ouvert_par_email: email,
-      source: 'benevolat', statut: 'success', twilio_call_id: callId,
+      source: 'benevolat', statut: isFailure ? 'failed' : 'success', twilio_call_id: callId,
+      raison_echec: isFailure ? `Statut Twilio : ${callStatus}` : null,
       ip_address: req.ip
     });
+
+    if (isFailure) {
+      return res.status(502).json({ success: false, message: `L'appel n'a pas abouti (statut Twilio : ${callStatus}).` });
+    }
 
     return res.json({ success: true, message: 'Portail en cours d\'ouverture !', callId });
 
