@@ -2,7 +2,7 @@
   <div class="max-w-2xl mx-auto">
     <h1 class="text-2xl font-bold text-gray-900 mb-2">Modification des quantités</h1>
     <p class="text-sm text-gray-500 mb-6">
-      Mettez à jour le nombre de repas prévus pour vos actions ACDLP.
+      Mettez à jour le nombre de repas et de colis prévus pour vos actions ACDLP.
     </p>
 
     <!-- Succès global -->
@@ -39,18 +39,25 @@
             <div class="text-right">
               <label class="block text-xs text-gray-500 mb-1">Repas</label>
               <input type="number"
-                     [(ngModel)]="action._editQty"
+                     [(ngModel)]="action._editRepas"
+                     min="0"
+                     class="w-24 text-right px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-600/20 focus:border-red-600 transition-colors text-sm" />
+            </div>
+            <div class="text-right">
+              <label class="block text-xs text-gray-500 mb-1">Colis</label>
+              <input type="number"
+                     [(ngModel)]="action._editColis"
                      min="0"
                      class="w-24 text-right px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-600/20 focus:border-red-600 transition-colors text-sm" />
             </div>
             <div class="pt-5">
               <button (click)="save(action)"
-                      [disabled]="action._saving || action._editQty === action.quantite_acdlp"
+                      [disabled]="action._saving || !isDirty(action)"
                       class="px-4 py-2 text-sm font-medium rounded-lg transition-colors"
                       [ngClass]="{
                         'bg-green-500 text-white': action._saved,
-                        'bg-red-600 text-white hover:bg-red-700': !action._saved && action._editQty !== action.quantite_acdlp,
-                        'bg-gray-100 text-gray-400 cursor-not-allowed': action._editQty === action.quantite_acdlp && !action._saved
+                        'bg-red-600 text-white hover:bg-red-700': !action._saved && isDirty(action),
+                        'bg-gray-100 text-gray-400 cursor-not-allowed': !isDirty(action) && !action._saved
                       }">
                 <span *ngIf="action._saving">...</span>
                 <span *ngIf="!action._saving && action._saved">✓</span>

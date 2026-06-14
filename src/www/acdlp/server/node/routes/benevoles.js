@@ -1967,7 +1967,7 @@ router.get('/acdlp-quantites', authMiddleware, async (req, res) => {
 
     const email = userRows[0].email;
     const actions = await db.select(
-      `SELECT id, nom, categorie, quantite_acdlp
+      `SELECT id, nom, categorie, repas_acdlp, colis_acdlp
        FROM actions
        WHERE responsable_email = ?
          AND categorie IN ('Maraudes', 'Distribution', 'Maraudes petit déjeuner')
@@ -1991,15 +1991,18 @@ router.put('/acdlp-quantites/:id', authMiddleware, async (req, res) => {
   try {
     const userId = req.user.id;
     const { id } = req.params;
-    const { quantite_acdlp } = req.body;
+    const { repas_acdlp, colis_acdlp } = req.body;
 
     const userRows = await db.select('SELECT type, email FROM benevoles_users WHERE id = ?', [userId]);
     if (!userRows || userRows.length === 0 || userRows[0].type !== 'responsable') {
       return res.status(403).json({ success: false, message: 'Accès réservé aux responsables' });
     }
 
-    if (quantite_acdlp === undefined || isNaN(parseInt(quantite_acdlp))) {
-      return res.status(400).json({ success: false, message: 'quantite_acdlp requis' });
+    if (repas_acdlp === undefined || isNaN(parseInt(repas_acdlp))) {
+      return res.status(400).json({ success: false, message: 'repas_acdlp requis' });
+    }
+    if (colis_acdlp === undefined || isNaN(parseInt(colis_acdlp))) {
+      return res.status(400).json({ success: false, message: 'colis_acdlp requis' });
     }
 
     const email = userRows[0].email;
@@ -2011,12 +2014,13 @@ router.put('/acdlp-quantites/:id', authMiddleware, async (req, res) => {
       return res.status(403).json({ success: false, message: 'Action introuvable ou accès non autorisé' });
     }
 
-    const qty = parseInt(quantite_acdlp);
-    await db.update('actions', { quantite_acdlp: qty }, 'id = ?', [id]);
+    const repas = parseInt(repas_acdlp);
+    const colis = parseInt(colis_acdlp);
+    await db.update('actions', { repas_acdlp: repas, colis_acdlp: colis }, 'id = ?', [id]);
 
     const updateResult = await db.query(
-      `UPDATE Commandes SET repas_quantite = ?, total_quantite = ? WHERE action_id = ? AND livraison >= CURDATE()`,
-      [qty, qty, id]
+      `UPDATE Commandes SET repas_quantite = ?, colis_quantite = ?, total_quantite = ? WHERE action_id = ? AND livraison >= CURDATE()`,
+      [repas, colis, repas + colis, id]
     );
 
     return res.json({

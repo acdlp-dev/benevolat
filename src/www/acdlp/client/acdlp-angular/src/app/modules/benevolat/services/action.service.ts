@@ -19,7 +19,8 @@ export interface AcdlpAction {
   id: number;
   nom: string;
   categorie: string;
-  quantite_acdlp: number;
+  repas_acdlp: number;
+  colis_acdlp: number;
 }
 
 export interface PendingValidationItem {
@@ -626,10 +627,10 @@ export class ActionService {
     );
   }
 
-  updateAcdlpQuantite(id: number, quantite_acdlp: number): Observable<{ success: boolean; message: string; commandes_updated: number }> {
+  updateAcdlpQuantite(id: number, repas_acdlp: number, colis_acdlp: number): Observable<{ success: boolean; message: string; commandes_updated: number }> {
     return this.http.put<{ success: boolean; message: string; commandes_updated: number }>(
       `${this.apiUrl}/acdlp-quantites/${id}`,
-      { quantite_acdlp },
+      { repas_acdlp, colis_acdlp },
       { withCredentials: true }
     );
   }

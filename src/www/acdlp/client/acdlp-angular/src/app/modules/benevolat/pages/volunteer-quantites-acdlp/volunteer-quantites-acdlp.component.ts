@@ -4,7 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { ActionService, AcdlpAction } from '../../services/action.service';
 
 interface AcdlpActionUI extends AcdlpAction {
-  _editQty: number;
+  _editRepas: number;
+  _editColis: number;
   _saving: boolean;
   _saved: boolean;
   _error: string | null;
@@ -36,7 +37,8 @@ export class VolunteerQuantitesAcdlpComponent implements OnInit {
       next: (res) => {
         this.actions = res.actions.map(a => ({
           ...a,
-          _editQty: a.quantite_acdlp,
+          _editRepas: a.repas_acdlp,
+          _editColis: a.colis_acdlp,
           _saving: false,
           _saved: false,
           _error: null
@@ -54,13 +56,18 @@ export class VolunteerQuantitesAcdlpComponent implements OnInit {
     });
   }
 
+  isDirty(action: AcdlpActionUI): boolean {
+    return action._editRepas !== action.repas_acdlp || action._editColis !== action.colis_acdlp;
+  }
+
   save(action: AcdlpActionUI): void {
-    if (action._editQty < 0) return;
+    if (action._editRepas < 0 || action._editColis < 0) return;
     action._saving = true;
     action._error = null;
-    this.actionService.updateAcdlpQuantite(action.id, action._editQty).subscribe({
+    this.actionService.updateAcdlpQuantite(action.id, action._editRepas, action._editColis).subscribe({
       next: (res) => {
-        action.quantite_acdlp = action._editQty;
+        action.repas_acdlp = action._editRepas;
+        action.colis_acdlp = action._editColis;
         action._saving = false;
         action._saved = true;
         this.globalSuccess = `Quantité mise à jour. ${res.commandes_updated} commande(s) future(s) modifiée(s).`;
