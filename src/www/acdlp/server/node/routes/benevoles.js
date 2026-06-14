@@ -1898,7 +1898,7 @@ router.post('/portail/ouvrir', authMiddleware, async (req, res) => {
     // parasite dans le .env (ex. un '©' collé au numéro) corrompe le caller ID
     // présenté au module GSM du portail — qui n'ouvrirait alors jamais.
     const FROM = (process.env.TWILIO_PHONE_NUMBER || '').replace(/[^\d+]/g, '');
-    const TO = (process.env.PORTAIL_PHONE || '').replace(/[^\d+]/g, '');
+    const TO = (process.env.PORTAL_PHONE || '').replace(/[^\d+]/g, '');
 
     if (!SID || !TOKEN || !FROM || !TO) {
       await db.insert('portail_logs', {
