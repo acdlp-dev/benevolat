@@ -1876,18 +1876,22 @@ router.post('/portail/ouvrir', authMiddleware, async (req, res) => {
     }
     const { prenom, nom, email } = users[0];
 
-    // Anti-spam : vérifier qu'aucune ouverture réussie n'a eu lieu dans les 10 dernières secondes
+    // Anti-spam : vérifier qu'aucune ouverture réussie n'a eu lieu dans les 10 dernières secondes.
+    // On laisse MySQL calculer l'écart (TIMESTAMPDIFF) pour éviter tout décalage de fuseau
+    // horaire lié au reparsing de created_at côté Node.
+    const COOLDOWN = 10;
     const recent = await db.select(
-      `SELECT created_at FROM portail_logs WHERE statut = 'success' ORDER BY created_at DESC LIMIT 1`,
+      `SELECT TIMESTAMPDIFF(SECOND, created_at, NOW()) AS diff
+       FROM portail_logs WHERE statut = 'success' ORDER BY created_at DESC LIMIT 1`,
       []
     );
     if (recent && recent.length > 0) {
-      const lastOpen = new Date(recent[0].created_at);
-      const diffSeconds = (Date.now() - lastOpen.getTime()) / 1000;
-      if (diffSeconds < 10) {
+      const diffSeconds = Number(recent[0].diff);
+      // diff négatif = horloge incohérente → on n'applique pas le cooldown
+      if (diffSeconds >= 0 && diffSeconds < COOLDOWN) {
         return res.status(429).json({
           success: false,
-          message: `Portail déjà ouvert il y a ${Math.ceil(10 - diffSeconds)} seconde(s). Veuillez patienter.`
+          message: `Portail déjà ouvert il y a ${diffSeconds} seconde(s). Veuillez patienter ${COOLDOWN - diffSeconds} seconde(s).`
         });
       }
     }
